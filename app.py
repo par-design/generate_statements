@@ -259,6 +259,11 @@ def generate_statement_pdf(data, invoices):
         except Exception as e:
             logger.warning(f"Logo base64 invalide: {e}")
 
+    # Fallback: logo par défaut inclus dans le container
+    DEFAULT_LOGO = "/app/logo.png"
+    if not logo_tmp_path and os.path.exists(DEFAULT_LOGO):
+        logo_tmp_path = DEFAULT_LOGO
+
     # ── Totaux ───────────────────────────────────────────
     total_amount = sum(inv["amount"] for inv in invoices)
     total_interest = sum(inv["interest"] for inv in invoices)
@@ -466,7 +471,7 @@ def generate_statement_pdf(data, invoices):
 
     c.save()
 
-    if logo_tmp_path and os.path.exists(logo_tmp_path):
+    if logo_tmp_path and logo_tmp_path != DEFAULT_LOGO and os.path.exists(logo_tmp_path):
         os.unlink(logo_tmp_path)
 
     buffer.seek(0)
