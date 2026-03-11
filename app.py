@@ -588,6 +588,19 @@ def generate_statement_raw():
         if isinstance(raw_invoices, dict):
             raw_invoices = [raw_invoices]
 
+        # ── Make.com Data Structure envoie un tableau de STRINGS JSON ──
+        # Ex: ["{\"Id\":\"642\"...}", "{\"Id\":\"643\"...}"]
+        # Il faut parser chaque string individuellement
+        if raw_invoices and isinstance(raw_invoices, list):
+            if isinstance(raw_invoices[0], str):
+                parsed = []
+                for item_str in raw_invoices:
+                    try:
+                        parsed.append(json.loads(item_str))
+                    except (json.JSONDecodeError, TypeError):
+                        parsed.append(item_str)  # garder tel quel si ça échoue
+                raw_invoices = parsed
+
         # Si c'est le format Array Aggregator: [{"__IMTKEY__": ..., "array": [...]}]
         # Extraire les factures du sous-tableau "array"
         if raw_invoices and isinstance(raw_invoices, list):
