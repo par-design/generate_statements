@@ -1,0 +1,31 @@
+import json
+import requests
+
+payload = {
+    "company_tps": "987654321 RT0001",
+    "company_tvq": "9876543210 TQ0001",
+    "company_name": "Association des producteurs de fraises\net framboises du Québec",
+    "raw_invoices": [
+        "{\"Id\":\"422\",\"Job\":false,\"Line\":[{\"Id\":\"1\",\"LineNum\":1,\"Description\":\"Module 1 - Logiciel uFields - du 1er janvier au 31 décembre 2026\",\"Amount\":1179,\"DetailType\":\"SalesItemLineDetail\",\"SalesItemLineDetail\":{\"ServiceDate\":\"2026-01-01T05:00:00.000Z\",\"ItemRef\":{\"value\":\"29\",\"name\":\"Logiciel uFields:Ufields 2026 module 1\"},\"ClassRef\":{\"value\":\"1000000009\",\"name\":\"58835\"},\"UnitPrice\":1179,\"Qty\":1,\"ItemAccountRef\":{\"value\":\"49\",\"name\":\"Services\"},\"TaxCodeRef\":{\"value\":\"7\"}}},{\"Id\":\"2\",\"LineNum\":2,\"Description\":\"Module 2 - Logiciel uFields - du 1er janvier au 31 décembre 2026\",\"Amount\":685,\"DetailType\":\"SalesItemLineDetail\",\"SalesItemLineDetail\":{\"ServiceDate\":\"2026-01-01T05:00:00.000Z\",\"ItemRef\":{\"value\":\"30\",\"name\":\"Logiciel uFields:Ufields 2026 module 2\"},\"ClassRef\":{\"value\":\"1000000009\",\"name\":\"58835\"},\"UnitPrice\":685,\"Qty\":1,\"ItemAccountRef\":{\"value\":\"49\",\"name\":\"Services\"},\"TaxCodeRef\":{\"value\":\"7\"}}},{\"Amount\":1864,\"DetailType\":\"SubTotalLineDetail\",\"SubTotalLineDetail\":{}}],\"Notes\":null,\"Title\":null,\"Active\":true,\"Mobile\":{\"FreeFormNumber\":\"450 565-5174 cell\"},\"Suffix\":null,\"domain\":\"QBO\",\"sparse\":false,\"Balance\":2143.14,\"Deposit\":null,\"DueDate\":\"2026-01-16T05:00:00.000Z\",\"Taxable\":false,\"TxnDate\":\"2026-01-01T05:00:00.000Z\",\"BillAddr\":{\"Id\":\"733\",\"Line1\":\"11 000, rang Sainte-Henriette\",\"City\":\"Mirabel\",\"CountrySubDivisionCode\":\"Québec\",\"PostalCode\":\"J7J 1Z9\"},\"MetaData\":{\"CreateTime\":\"2025-05-30T16:30:15.000Z\",\"LastUpdatedTime\":\"2025-12-18T21:02:13.000Z\"},\"ShipAddr\":{\"Id\":\"733\",\"Line1\":\"11 000, rang Sainte-Henriette\",\"City\":\"Mirabel\",\"CountrySubDivisionCode\":\"Québec\",\"PostalCode\":\"J7J 1Z9\"},\"ShipDate\":null,\"TotalAmt\":2143.14,\"BillEmail\":null,\"DocNumber\":\"UF274\",\"GivenName\":\"Pierre-Yves\",\"IsProject\":false,\"LinkedTxn\":[],\"SyncToken\":\"1\",\"FamilyName\":\"Éthier\",\"MiddleName\":null,\"CompanyName\":\"Au Pays des petits fruits\",\"CurrencyRef\":{\"value\":\"CAD\",\"name\":\"Dollar canadien\"},\"CustomField\":[],\"CustomerRef\":null,\"DisplayName\":\"Au Pays des petits fruits\",\"EmailStatus\":null,\"PrintStatus\":null,\"PrivateNote\":null,\"TrackingNum\":null,\"CustomerMemo\":null,\"PrimaryPhone\":{\"FreeFormNumber\":\"450-475-6158\"},\"SalesTermRef\":null,\"TxnTaxDetail\":{\"TotalTax\":279.14},\"__IMTINDEX__\":3,\"ShipMethodRef\":null,\"V4IDPseudonym\":\"002093617f90ec8be046bb8ba00b66599d567a\",\"__IMTLENGTH__\":21,\"BillWithParent\":false,\"ClientEntityId\":\"0\",\"AllowIPNPayment\":null,\"BalanceWithJobs\":2143.14,\"CustomerTypeRef\":null,\"PrimaryEmailAddr\":{\"Address\":\"pierre-yves.ethier@sympatico.ca\"},\"PrintOnCheckName\":\"Au Pays des petits fruits\",\"DefaultTaxCodeRef\":null,\"AllowOnlinePayment\":null,\"FullyQualifiedName\":\"Au Pays des petits fruits\",\"GlobalTaxCalculation\":null,\"PrimaryTaxIdentifier\":null,\"AllowOnlineACHPayment\":null,\"SecondaryTaxIdentifier\":null,\"PreferredDeliveryMethod\":\"None\",\"AllowOnlineCreditCardPayment\":null}"
+    ],
+    "company_email": "apffq@upa.qc.ca",
+    "company_phone": "450 679-0540 poste 8792",
+    "customer_name": "Au Pays des petits fruits",
+    "company_address": "555 Bd Roland-Therrien, Longueuil, QC J4J 5J1",
+    "customer_address": "11 000, rang Sainte-Henriette Mirabel, Québec, J7J 1Z9",
+    "frais_retard_item_id": "18",
+    "customer_member_number": "422"
+}
+
+print("Saving payload to payload.json")
+with open("payload.json", "w") as f:
+    json.dump(payload, f)
+
+print("Making POST request...")
+r = requests.post("http://localhost:8080/generate-statement-raw", json=payload)
+if r.status_code == 200:
+    with open("exemple_facture.pdf", "wb") as f:
+        f.write(r.content)
+    print("PDF saved as exemple_facture.pdf")
+else:
+    print("Failed: ", r.status_code, r.text)

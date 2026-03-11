@@ -189,7 +189,7 @@ def calculate_aging(raw_invoices):
     now = datetime.now()
     buckets = [0.0, 0.0, 0.0, 0.0, 0.0]
     for inv in raw_invoices:
-        balance = float(inv.get("Balance", 0))
+        balance = float(inv.get("TotalAmt", 0))
         if balance <= 0:
             continue
         due_date_str = inv.get("DueDate", "")
@@ -260,7 +260,7 @@ def generate_statement_pdf(data, invoices):
             logger.warning(f"Logo base64 invalide: {e}")
 
     # Fallback: logo par défaut inclus dans le container
-    DEFAULT_LOGO = "/app/logo.png"
+    DEFAULT_LOGO = "logo.png" if os.path.exists("logo.png") else "/app/logo.png"
     if not logo_tmp_path and os.path.exists(DEFAULT_LOGO):
         logo_tmp_path = DEFAULT_LOGO
 
@@ -275,10 +275,10 @@ def generate_statement_pdf(data, invoices):
     # HEADER
     # ═════════════════════════════════════════════════════
     header_h = 110
-    c.setFillColor(DARKER_RED)
+    c.setFillColor(white)
     c.rect(0, h - header_h, w, header_h, fill=1, stroke=0)
     c.setFillColor(RED)
-    c.rect(0, h - header_h, w, 3, fill=1, stroke=0)
+    c.rect(0, h - header_h, w, 2, fill=1, stroke=0)
 
     if logo_tmp_path and os.path.exists(logo_tmp_path):
         try:
@@ -287,23 +287,22 @@ def generate_statement_pdf(data, invoices):
         except Exception:
             pass
 
-    # Company name (split lines)
     name_lines = company_name.split("\n") if "\n" in company_name else [company_name]
     c.setFont(F("Poppins-Bold"), 10)
-    c.setFillColor(white)
+    c.setFillColor(DARKER_RED)
     y_name = h - 45
     for nl in name_lines:
         c.drawString(110, y_name, nl.strip())
         y_name -= 13
 
-    c.setFont(F("Poppins-Light"), 7)
-    c.setFillColor(PINK)
+    c.setFont(F("Poppins-Medium"), 7)
+    c.setFillColor(TEXT_DARK)
     addr_line = company_address.replace("\n", ", ")
     c.drawString(110, h - 73, f"{addr_line}  |  Tél: {company_phone}")
     c.drawString(110, h - 84, f"{company_email}  |  TPS: {company_tps}  |  TVQ: {company_tvq}")
 
     c.setFont(F("Poppins-Bold"), 22)
-    c.setFillColor(white)
+    c.setFillColor(DARKER_RED)
     c.drawRightString(w - MR, h - 55, "RELEVÉ DE")
     c.drawRightString(w - MR, h - 80, "COMPTE")
 
@@ -311,7 +310,7 @@ def generate_statement_pdf(data, invoices):
     # BANDE INFO
     # ═════════════════════════════════════════════════════
     y_info = h - header_h - 40
-    draw_rounded_rect(c, ML, y_info - 8, CW, 38, RADIUS, WHITE_PINK, PINK)
+    draw_rounded_rect(c, ML, y_info - 8, CW, 38, RADIUS, white, PINK, 1)
     c.setFont(F("Poppins-Medium"), 8)
     c.setFillColor(DARKER_RED)
     c.drawString(ML + 15, y_info + 8, f"Date: {statement_date}")
@@ -346,13 +345,15 @@ def generate_statement_pdf(data, invoices):
     card_x = w - MR - card_w
     card_y = y_section - card_h + 18
 
-    draw_rounded_rect(c, card_x, card_y, card_w, card_h, RADIUS, WHITE_PINK, DARK_RED, 1)
-    draw_rounded_rect(c, card_x, card_y + card_h - 28, card_w, 28, RADIUS, DARKER_RED)
-    c.setFillColor(DARKER_RED)
-    c.rect(card_x, card_y + card_h - 28, card_w, 14, fill=1, stroke=0)
+    draw_rounded_rect(c, card_x, card_y, card_w, card_h, RADIUS, white, DARK_RED, 1)
+
+    # Border under title
+    c.setStrokeColor(DARK_RED)
+    c.setLineWidth(1)
+    c.line(card_x, card_y + card_h - 28, card_x + card_w, card_y + card_h - 28)
 
     c.setFont(F("Poppins-Bold"), 9)
-    c.setFillColor(white)
+    c.setFillColor(DARKER_RED)
     c.drawCentredString(card_x + card_w / 2, card_y + card_h - 20, "RÉSUMÉ DU COMPTE")
 
     y_line = card_y + card_h - 42
@@ -385,7 +386,7 @@ def generate_statement_pdf(data, invoices):
     y_table = card_y - 25
 
     headers = ["Date", "# Facture", "Montant\nfacture", "Frais de\nretard", "TPS", "TVQ", "Total"]
-    h_style = ParagraphStyle('h', fontName=F('Poppins-Bold'), fontSize=7.5, textColor=white, alignment=TA_CENTER, leading=9.5)
+    h_style = ParagraphStyle('h', fontName=F('Poppins-Bold'), fontSize=7.5, textColor=DARKER_RED, alignment=TA_CENTER, leading=9.5)
     c_right = ParagraphStyle('cr', fontName=F('Poppins'), fontSize=8, textColor=TEXT_DARK, alignment=TA_RIGHT, leading=11)
     c_center = ParagraphStyle('cc', fontName=F('Poppins'), fontSize=8, textColor=TEXT_DARK, alignment=TA_CENTER, leading=11)
     t_style = ParagraphStyle('ts', fontName=F('Poppins-Bold'), fontSize=8.5, textColor=DARKER_RED, alignment=TA_RIGHT, leading=11)
@@ -414,12 +415,9 @@ def generate_statement_pdf(data, invoices):
 
     table = Table(tdata, colWidths=col_w, repeatRows=1)
     table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), DARK_RED),
         ('TOPPADDING', (0, 0), (-1, 0), 8), ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
         ('ALIGN', (0, 0), (-1, 0), 'CENTER'), ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
         ('TOPPADDING', (0, 1), (-1, -2), 7), ('BOTTOMPADDING', (0, 1), (-1, -2), 7),
-        *[('BACKGROUND', (0, i), (-1, i), WHITE_PINK) for i in range(2, nr - 1, 2)],
-        ('BACKGROUND', (0, -1), (-1, -1), PINK),
         ('LINEABOVE', (0, -1), (-1, -1), 2, RED),
         ('TOPPADDING', (0, -1), (-1, -1), 10), ('BOTTOMPADDING', (0, -1), (-1, -1), 10),
         ('GRID', (0, 1), (-1, -1), 0.25, GRID_COLOR),
@@ -441,14 +439,13 @@ def generate_statement_pdf(data, invoices):
     ag_col = CW / 5
     ag_t = Table([ag_h, aging], colWidths=[ag_col] * 5)
     ag_t.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), DARK_RED),
-        ('TEXTCOLOR', (0, 0), (-1, 0), white),
+        ('TEXTCOLOR', (0, 0), (-1, 0), DARKER_RED),
         ('FONTNAME', (0, 0), (-1, 0), F('Poppins-Bold')), ('FONTSIZE', (0, 0), (-1, 0), 7.5),
         ('FONTNAME', (0, 1), (-1, 1), F('Poppins-Medium')), ('FONTSIZE', (0, 1), (-1, 1), 8.5),
         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
         ('TOPPADDING', (0, 0), (-1, -1), 6), ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
         ('GRID', (0, 0), (-1, -1), 0.3, PINK),
-        ('BACKGROUND', (0, 1), (-1, 1), WHITE_PINK),
+        ('LINEBELOW', (0, 0), (-1, 0), 1.5, RED),
     ]))
 
     ag_bot = draw_rounded_table(c, ag_t, ML, y_ag, CW, RADIUS, DARK_RED, 0.8)
