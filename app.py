@@ -527,6 +527,20 @@ def generate_statement_raw():
             return jsonify({"error": "Corps JSON vide."}), 400
 
         raw_invoices = data.get("raw_invoices", [])
+
+        # Make.com peut envoyer raw_invoices comme une string JSON
+        # au lieu d'un tableau — on gère les deux cas
+        if isinstance(raw_invoices, str):
+            try:
+                import json
+                raw_invoices = json.loads(raw_invoices)
+            except (json.JSONDecodeError, TypeError) as e:
+                return jsonify({"error": f"raw_invoices n'est pas un JSON valide: {str(e)}"}), 400
+
+        # Si c'est un dict unique au lieu d'une liste (1 seule facture)
+        if isinstance(raw_invoices, dict):
+            raw_invoices = [raw_invoices]
+
         if not raw_invoices:
             return jsonify({"error": "Aucune facture dans 'raw_invoices'."}), 400
 
