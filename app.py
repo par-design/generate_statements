@@ -530,17 +530,38 @@ def generate_statement_raw():
         if raw_b64:
             try:
                 decoded = base64.b64decode(raw_b64).decode("utf-8")
-                raw_invoices = json.loads(decoded)
-                logger.info(f"[raw] raw_invoices décodé depuis base64")
-            except Exception as e:
-                # Parfois Make.com encode en base64 un format Python
+                logger.info(f"[raw] base64 décodé, longueur: {len(decoded)}, début: {decoded[:100]}...")
+
+                # Nettoyer le format Make.com pour le rendre JSON-compatible
+                import re
+                cleaned = decoded
+                # Remplacer None → null, True → true, False → false
+                cleaned = re.sub(r'\bNone\b', 'null', cleaned)
+                cleaned = re.sub(r'\bTrue\b', 'true', cleaned)
+                cleaned = re.sub(r'\bFalse\b', 'false', cleaned)
+                # Remplacer guillemets simples par doubles (attention aux apostrophes dans le texte)
+                # Stratégie : remplacer ' par " seulement aux positions clés JSON
+                # D'abord essayer json.loads directement
                 try:
-                    import ast
-                    decoded = base64.b64decode(raw_b64).decode("utf-8")
-                    raw_invoices = ast.literal_eval(decoded)
-                    logger.info(f"[raw] raw_invoices décodé depuis base64 (ast)")
-                except Exception as e2:
-                    return jsonify({"error": f"raw_invoices_base64 invalide: {str(e2)}"}), 400
+                    raw_invoices = json.loads(cleaned)
+                except json.JSONDecodeError:
+                    # Remplacer les guillemets simples utilisés comme délimiteurs JSON
+                    # Pattern: début de valeur, clés, etc.
+                    cleaned = cleaned.replace("'", '"')
+                    # Corriger les apostrophes dans le texte qui ont été cassées
+                    # Ex: "l"Agriculture" → "l'Agriculture"
+                    # On ne peut pas tout corriger, mais on essaie le parse
+                    try:
+                        raw_invoices = json.loads(cleaned)
+                    except json.JSONDecodeError:
+                        # Dernier recours: ast.literal_eval sur le décodé original
+                        import ast
+                        raw_invoices = ast.literal_eval(decoded)
+
+                logger.info(f"[raw] raw_invoices décodé depuis base64: {type(raw_invoices)}")
+            except Exception as e:
+                logger.error(f"[raw] Échec décodage base64: {e}, contenu: {decoded[:200] if 'decoded' in dir() else 'N/A'}")
+                return jsonify({"error": f"raw_invoices_base64 invalide: {str(e)}"}), 400
 
         # ── Normaliser raw_invoices ──────────────────────
         # Make.com peut envoyer plusieurs formats selon le module :
