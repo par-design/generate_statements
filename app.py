@@ -528,8 +528,15 @@ def generate_statement_raw():
         if isinstance(raw_invoices, str):
             try:
                 raw_invoices = json.loads(raw_invoices)
-            except (json.JSONDecodeError, TypeError) as e:
-                return jsonify({"error": f"raw_invoices JSON invalide: {str(e)}"}), 400
+            except (json.JSONDecodeError, TypeError):
+                # Make.com toString() produit un format Python (guillemets simples,
+                # True/False au lieu de true/false, None au lieu de null)
+                # On essaie ast.literal_eval comme fallback
+                try:
+                    import ast
+                    raw_invoices = ast.literal_eval(raw_invoices)
+                except Exception as e2:
+                    return jsonify({"error": f"raw_invoices format invalide: {str(e2)}"}), 400
 
         if isinstance(raw_invoices, dict):
             raw_invoices = [raw_invoices]
