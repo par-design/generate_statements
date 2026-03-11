@@ -443,8 +443,8 @@ def generate_statement_pdf(data, invoices):
     ag_t.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), DARK_RED),
         ('TEXTCOLOR', (0, 0), (-1, 0), white),
-        ('FONTNAME', (0, 0), (-1, 0), 'Poppins-Bold'), ('FONTSIZE', (0, 0), (-1, 0), 7.5),
-        ('FONTNAME', (0, 1), (-1, 1), 'Poppins-Medium'), ('FONTSIZE', (0, 1), (-1, 1), 8.5),
+        ('FONTNAME', (0, 0), (-1, 0), F('Poppins-Bold')), ('FONTSIZE', (0, 0), (-1, 0), 7.5),
+        ('FONTNAME', (0, 1), (-1, 1), F('Poppins-Medium')), ('FONTSIZE', (0, 1), (-1, 1), 8.5),
         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
         ('TOPPADDING', (0, 0), (-1, -1), 6), ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
         ('GRID', (0, 0), (-1, -1), 0.3, PINK),
@@ -525,29 +525,59 @@ def generate_statement_raw():
 
         raw_invoices = data.get("raw_invoices", [])
 
+        # ── Normaliser raw_invoices ──────────────────────
+        # Make.com peut envoyer plusieurs formats selon le module :
+        #
+        # 1. Un tableau de factures directement : [{facture1}, {facture2}]
+        # 2. Une string JSON/Python : "[{...}]"
+        # 3. Un dict unique (1 seule facture) : {facture}
+        # 4. Le format Array Aggregator de Make.com :
+        #    [{"__IMTKEY__": "123", "array": [{facture1}, {facture2}]}]
+        #    ou [{facture1_avec_champs_client}, {facture2_avec_champs_client}]
+
+        # Si c'est une string, tenter de parser
         if isinstance(raw_invoices, str):
             try:
                 raw_invoices = json.loads(raw_invoices)
             except (json.JSONDecodeError, TypeError):
-                # Make.com toString() produit un format Python (guillemets simples,
-                # True/False au lieu de true/false, None au lieu de null)
-                # On essaie ast.literal_eval comme fallback
                 try:
                     import ast
                     raw_invoices = ast.literal_eval(raw_invoices)
                 except Exception as e2:
                     return jsonify({"error": f"raw_invoices format invalide: {str(e2)}"}), 400
 
+        # Si c'est un dict unique, le mettre dans une liste
         if isinstance(raw_invoices, dict):
             raw_invoices = [raw_invoices]
+
+        # Si c'est le format Array Aggregator: [{"__IMTKEY__": ..., "array": [...]}]
+        # Extraire les factures du sous-tableau "array"
+        if raw_invoices and isinstance(raw_invoices, list):
+            extracted = []
+            for item in raw_invoices:
+                if isinstance(item, dict) and "array" in item:
+                    # Format aggregator: extraire le sous-tableau
+                    sub = item["array"]
+                    if isinstance(sub, list):
+                        extracted.extend(sub)
+                    elif isinstance(sub, dict):
+                        extracted.append(sub)
+                elif isinstance(item, dict) and "Line" in item:
+                    # Format direct: c'est déjà une facture
+                    extracted.append(item)
+                elif isinstance(item, dict):
+                    # Objet inconnu mais on essaie quand même
+                    extracted.append(item)
+            if extracted:
+                raw_invoices = extracted
 
         if not raw_invoices:
             return jsonify({"error": "Aucune facture dans 'raw_invoices'."}), 400
 
+        logger.info(f"[raw] {data.get('customer_name', '?')} — {len(raw_invoices)} facture(s) — "
+                     f"Premier DocNumber: {raw_invoices[0].get('DocNumber', '?') if raw_invoices else '?'}")
+
         frais_retard_id = data.get("frais_retard_item_id", FRAIS_RETARD_ITEM_ID)
-
-        logger.info(f"[raw] {data.get('customer_name', '?')} — {len(raw_invoices)} facture(s)")
-
         invoices = process_raw_invoices(raw_invoices, frais_retard_id)
         data["aging"] = calculate_aging(raw_invoices)
 
