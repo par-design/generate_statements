@@ -39,14 +39,29 @@ app = Flask(__name__)
 
 # ── Register Poppins fonts ──────────────────────────────
 FONT_DIR = "/usr/share/fonts/truetype/poppins"
+FONTS_LOADED = False
+
+def F(name):
+    """Retourne le nom de police, avec fallback Helvetica si Poppins pas dispo."""
+    if FONTS_LOADED:
+        return name
+    mapping = {
+        'Poppins': 'Helvetica',
+        'Poppins-Bold': 'Helvetica-Bold',
+        'Poppins-Medium': 'Helvetica',
+        'Poppins-Light': 'Helvetica',
+    }
+    return mapping.get(name, 'Helvetica')
+
 try:
     pdfmetrics.registerFont(TTFont('Poppins', f'{FONT_DIR}/Poppins-Regular.ttf'))
     pdfmetrics.registerFont(TTFont('Poppins-Bold', f'{FONT_DIR}/Poppins-Bold.ttf'))
     pdfmetrics.registerFont(TTFont('Poppins-Medium', f'{FONT_DIR}/Poppins-Medium.ttf'))
     pdfmetrics.registerFont(TTFont('Poppins-Light', f'{FONT_DIR}/Poppins-Light.ttf'))
-    logger.info("Polices Poppins chargées avec succès")
+    FONTS_LOADED = True
+    logger.info("Polices Poppins chargées")
 except Exception as e:
-    logger.warning(f"Polices Poppins non trouvées, fallback Helvetica: {e}")
+    logger.warning(f"Fallback Helvetica: {e}")
 
 # ── APFFQ Colors ────────────────────────────────────────
 DARK_RED = HexColor("#9F2842")
@@ -269,20 +284,20 @@ def generate_statement_pdf(data, invoices):
 
     # Company name (split lines)
     name_lines = company_name.split("\n") if "\n" in company_name else [company_name]
-    c.setFont("Poppins-Bold", 10)
+    c.setFont(F("Poppins-Bold"), 10)
     c.setFillColor(white)
     y_name = h - 45
     for nl in name_lines:
         c.drawString(110, y_name, nl.strip())
         y_name -= 13
 
-    c.setFont("Poppins-Light", 7)
+    c.setFont(F("Poppins-Light"), 7)
     c.setFillColor(PINK)
     addr_line = company_address.replace("\n", ", ")
     c.drawString(110, h - 73, f"{addr_line}  |  Tél: {company_phone}")
     c.drawString(110, h - 84, f"{company_email}  |  TPS: {company_tps}  |  TVQ: {company_tvq}")
 
-    c.setFont("Poppins-Bold", 22)
+    c.setFont(F("Poppins-Bold"), 22)
     c.setFillColor(white)
     c.drawRightString(w - MR, h - 55, "RELEVÉ DE")
     c.drawRightString(w - MR, h - 80, "COMPTE")
@@ -292,7 +307,7 @@ def generate_statement_pdf(data, invoices):
     # ═════════════════════════════════════════════════════
     y_info = h - header_h - 40
     draw_rounded_rect(c, ML, y_info - 8, CW, 38, RADIUS, WHITE_PINK, PINK)
-    c.setFont("Poppins-Medium", 8)
+    c.setFont(F("Poppins-Medium"), 8)
     c.setFillColor(DARKER_RED)
     c.drawString(ML + 15, y_info + 8, f"Date: {statement_date}")
     c.drawCentredString(w / 2, y_info + 8, f"Période: {period_start} au {period_end}")
@@ -304,16 +319,16 @@ def generate_statement_pdf(data, invoices):
     y_section = y_info - 45
 
     # Client (gauche)
-    c.setFont("Poppins-Bold", 8)
+    c.setFont(F("Poppins-Bold"), 8)
     c.setFillColor(RED)
     c.drawString(ML + 10, y_section, "FACTURER À")
     c.setStrokeColor(RED)
     c.setLineWidth(2.5)
     c.line(ML + 5, y_section - 48, ML + 5, y_section + 8)
-    c.setFont("Poppins-Bold", 10)
+    c.setFont(F("Poppins-Bold"), 10)
     c.setFillColor(TEXT_DARK)
     c.drawString(ML + 15, y_section - 16, customer_name)
-    c.setFont("Poppins-Light", 8.5)
+    c.setFont(F("Poppins-Light"), 8.5)
     c.setFillColor(TEXT_GRAY)
     y_a = y_section - 30
     for line in customer_address.split("\n"):
@@ -331,7 +346,7 @@ def generate_statement_pdf(data, invoices):
     c.setFillColor(DARKER_RED)
     c.rect(card_x, card_y + card_h - 28, card_w, 14, fill=1, stroke=0)
 
-    c.setFont("Poppins-Bold", 9)
+    c.setFont(F("Poppins-Bold"), 9)
     c.setFillColor(white)
     c.drawCentredString(card_x + card_w / 2, card_y + card_h - 20, "RÉSUMÉ DU COMPTE")
 
@@ -342,10 +357,10 @@ def generate_statement_pdf(data, invoices):
         ("TPS", fmt_money(total_tps)),
         ("TVQ", fmt_money(total_tvq)),
     ]:
-        c.setFont("Poppins-Light", 8)
+        c.setFont(F("Poppins-Light"), 8)
         c.setFillColor(TEXT_GRAY)
         c.drawString(card_x + 15, y_line, label)
-        c.setFont("Poppins-Medium", 8)
+        c.setFont(F("Poppins-Medium"), 8)
         c.setFillColor(TEXT_DARK)
         c.drawRightString(card_x + card_w - 15, y_line, val)
         y_line -= 14
@@ -354,7 +369,7 @@ def generate_statement_pdf(data, invoices):
     c.setLineWidth(1)
     c.line(card_x + 15, y_line + 6, card_x + card_w - 15, y_line + 6)
 
-    c.setFont("Poppins-Bold", 12)
+    c.setFont(F("Poppins-Bold"), 12)
     c.setFillColor(DARKER_RED)
     c.drawString(card_x + 15, y_line - 8, "TOTAL DÛ")
     c.drawRightString(card_x + card_w - 15, y_line - 8, fmt_money(grand_total))
@@ -365,11 +380,11 @@ def generate_statement_pdf(data, invoices):
     y_table = card_y - 25
 
     headers = ["Date", "# Facture", "Montant\nfacture", "Frais de\nretard", "TPS", "TVQ", "Total"]
-    h_style = ParagraphStyle('h', fontName='Poppins-Bold', fontSize=7.5, textColor=white, alignment=TA_CENTER, leading=9.5)
-    c_right = ParagraphStyle('cr', fontName='Poppins', fontSize=8, textColor=TEXT_DARK, alignment=TA_RIGHT, leading=11)
-    c_center = ParagraphStyle('cc', fontName='Poppins', fontSize=8, textColor=TEXT_DARK, alignment=TA_CENTER, leading=11)
-    t_style = ParagraphStyle('ts', fontName='Poppins-Bold', fontSize=8.5, textColor=DARKER_RED, alignment=TA_RIGHT, leading=11)
-    t_label = ParagraphStyle('tl', fontName='Poppins-Bold', fontSize=9, textColor=DARKER_RED, alignment=TA_CENTER, leading=11)
+    h_style = ParagraphStyle('h', fontName=F('Poppins-Bold'), fontSize=7.5, textColor=white, alignment=TA_CENTER, leading=9.5)
+    c_right = ParagraphStyle('cr', fontName=F('Poppins'), fontSize=8, textColor=TEXT_DARK, alignment=TA_RIGHT, leading=11)
+    c_center = ParagraphStyle('cc', fontName=F('Poppins'), fontSize=8, textColor=TEXT_DARK, alignment=TA_CENTER, leading=11)
+    t_style = ParagraphStyle('ts', fontName=F('Poppins-Bold'), fontSize=8.5, textColor=DARKER_RED, alignment=TA_RIGHT, leading=11)
+    t_label = ParagraphStyle('tl', fontName=F('Poppins-Bold'), fontSize=9, textColor=DARKER_RED, alignment=TA_CENTER, leading=11)
 
     tdata = [[Paragraph(hh.replace("\n", "<br/>"), h_style) for hh in headers]]
     for inv in invoices:
@@ -412,7 +427,7 @@ def generate_statement_pdf(data, invoices):
     # ANCIENNETÉ DES COMPTES
     # ═════════════════════════════════════════════════════
     y_ag = table_bot - 25
-    c.setFont("Poppins-Bold", 8)
+    c.setFont(F("Poppins-Bold"), 8)
     c.setFillColor(DARKER_RED)
     c.drawString(ML, y_ag, "SOMMAIRE DE L'ANCIENNETÉ DES COMPTES")
     y_ag -= 5
@@ -437,13 +452,13 @@ def generate_statement_pdf(data, invoices):
     # FOOTER
     # ═════════════════════════════════════════════════════
     y_f = ag_bot - 28
-    c.setFont("Poppins-Light", 7.5)
+    c.setFont(F("Poppins-Light"), 7.5)
     c.setFillColor(TEXT_GRAY)
     c.drawCentredString(w / 2, y_f, message_footer)
 
     c.setFillColor(DARKER_RED)
     c.rect(0, 0, w, 6, fill=1, stroke=0)
-    c.setFont("Poppins-Light", 6.5)
+    c.setFont(F("Poppins-Light"), 6.5)
     c.setFillColor(TEXT_GRAY)
     c.drawCentredString(w / 2, 12,
         f"Généré le {datetime.now().strftime('%d-%m-%Y à %H:%M')}"
