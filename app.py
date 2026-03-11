@@ -525,6 +525,23 @@ def generate_statement_raw():
 
         raw_invoices = data.get("raw_invoices", [])
 
+        # ── Support base64 (solution pour Make.com JSON String) ──
+        raw_b64 = data.get("raw_invoices_base64", None)
+        if raw_b64:
+            try:
+                decoded = base64.b64decode(raw_b64).decode("utf-8")
+                raw_invoices = json.loads(decoded)
+                logger.info(f"[raw] raw_invoices décodé depuis base64")
+            except Exception as e:
+                # Parfois Make.com encode en base64 un format Python
+                try:
+                    import ast
+                    decoded = base64.b64decode(raw_b64).decode("utf-8")
+                    raw_invoices = ast.literal_eval(decoded)
+                    logger.info(f"[raw] raw_invoices décodé depuis base64 (ast)")
+                except Exception as e2:
+                    return jsonify({"error": f"raw_invoices_base64 invalide: {str(e2)}"}), 400
+
         # ── Normaliser raw_invoices ──────────────────────
         # Make.com peut envoyer plusieurs formats selon le module :
         #
