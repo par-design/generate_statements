@@ -237,6 +237,7 @@ def generate_statement_pdf(data, invoices):
     company_tps = data.get("company_tps", "")
     company_tvq = data.get("company_tvq", "")
     customer_name = data.get("customer_name", "Client")
+    customer_producer_name = data.get("customer_producer_name", "")
     customer_address = data.get("customer_address", "")
     customer_member_number = data.get("customer_member_number", "—")
     statement_date = data.get("statement_date", datetime.now().strftime("%d-%m-%Y"))
@@ -328,13 +329,22 @@ def generate_statement_pdf(data, invoices):
     c.drawString(ML + 10, y_section, "FACTURER À")
     c.setStrokeColor(RED)
     c.setLineWidth(2.5)
-    c.line(ML + 5, y_section - 48, ML + 5, y_section + 8)
+    # Adjust sidebar line height if producer name is present
+    sidebar_top = y_section + 8
+    sidebar_bot = y_section - 60 if customer_producer_name else y_section - 48
+    c.line(ML + 5, sidebar_bot, ML + 5, sidebar_top)
+    y_billing = y_section - 14
+    if customer_producer_name:
+        c.setFont(F("Poppins-Medium"), 8.5)
+        c.setFillColor(TEXT_GRAY)
+        c.drawString(ML + 15, y_billing, customer_producer_name)
+        y_billing -= 14
     c.setFont(F("Poppins-Bold"), 10)
     c.setFillColor(TEXT_DARK)
-    c.drawString(ML + 15, y_section - 16, customer_name)
+    c.drawString(ML + 15, y_billing, customer_name)
     c.setFont(F("Poppins-Light"), 8.5)
     c.setFillColor(TEXT_GRAY)
-    y_a = y_section - 30
+    y_a = y_billing - 14
     for line in customer_address.split("\n"):
         c.drawString(ML + 15, y_a, line.strip())
         y_a -= 12
@@ -628,6 +638,15 @@ def generate_statement_raw():
         frais_retard_id = data.get("frais_retard_item_id", FRAIS_RETARD_ITEM_ID)
         invoices = process_raw_invoices(raw_invoices, frais_retard_id)
         data["aging"] = calculate_aging(raw_invoices)
+
+        # Auto-extraire le nom du producteur depuis la première facture si non fourni
+        if not data.get("customer_producer_name") and raw_invoices:
+            first = raw_invoices[0]
+            given = first.get("GivenName", "") or ""
+            family = first.get("FamilyName", "") or ""
+            producer_name = " ".join(p for p in [given, family] if p).strip()
+            if producer_name:
+                data["customer_producer_name"] = producer_name
 
         pdf_buffer = generate_statement_pdf(data, invoices)
         customer = data.get("customer_name", "client").replace(" ", "_")
