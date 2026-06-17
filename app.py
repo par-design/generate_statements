@@ -78,7 +78,10 @@ GRID_COLOR = HexColor("#F0C0B0")
 TPS_RATE = 5.0
 TVQ_RATE = 9.975
 COMBINED_RATE = TPS_RATE + TVQ_RATE
-FRAIS_RETARD_ITEM_ID = "18"
+# IDs d'article QuickBooks connus pour les frais de retard (varie d'un fichier à l'autre).
+FRAIS_RETARD_ITEM_ID = ["17", "18"]
+# Détection de secours par nom d'article (insensible à la casse/accents) si l'ID ne correspond pas.
+FRAIS_RETARD_KEYWORDS = ("frais de retard", "frais retard", "interet", "intérêt", "late fee", "penalite", "pénalité")
 
 # ── Layout constants ────────────────────────────────────
 ML = 35           # Marge gauche
@@ -140,7 +143,28 @@ def draw_rounded_table(cv, table, x, y_top, table_width, radius, border_color, b
 # TRAITEMENT DES DONNÉES QUICKBOOKS
 # ═══════════════════════════════════════════════════════════
 
+def _strip_accents(s):
+    """Retire les accents pour une comparaison de texte robuste."""
+    import unicodedata
+    return "".join(c for c in unicodedata.normalize("NFD", s) if unicodedata.category(c) != "Mn")
+
+
+def is_frais_retard(item_id, item_name, frais_retard_ids):
+    """Détermine si une ligne est un frais de retard, par ID OU par nom d'article.
+
+    La détection par nom sert de filet de sécurité : l'ID d'article QuickBooks varie
+    d'un fichier à l'autre, mais le nom (« Frais de retard ») reste stable.
+    """
+    if str(item_id) in {str(i) for i in frais_retard_ids}:
+        return True
+    name = _strip_accents(str(item_name or "")).lower()
+    return any(kw in name for kw in FRAIS_RETARD_KEYWORDS)
+
+
 def process_raw_invoices(raw_invoices, frais_retard_item_id=FRAIS_RETARD_ITEM_ID):
+    # Accepte un ID unique ("17") ou une liste (["17", "18"]).
+    frais_retard_ids = frais_retard_item_id if isinstance(frais_retard_item_id, (list, tuple)) else [frais_retard_item_id]
+
     processed = []
     for inv in raw_invoices:
         frais_retard = 0.0
@@ -150,9 +174,11 @@ def process_raw_invoices(raw_invoices, frais_retard_item_id=FRAIS_RETARD_ITEM_ID
             if line.get("DetailType") == "SubTotalLineDetail":
                 continue
             if line.get("DetailType") == "SalesItemLineDetail":
-                item_id = str(line.get("SalesItemLineDetail", {}).get("ItemRef", {}).get("value", ""))
+                item_ref = line.get("SalesItemLineDetail", {}).get("ItemRef", {})
+                item_id = str(item_ref.get("value", ""))
+                item_name = item_ref.get("name", "")
                 amount = float(line.get("Amount", 0))
-                if item_id == str(frais_retard_item_id):
+                if is_frais_retard(item_id, item_name, frais_retard_ids):
                     frais_retard += amount
                 else:
                     montant_services += amount

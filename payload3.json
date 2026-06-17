@@ -1,0 +1,55 @@
+{
+  "company_tps": "987654321 RT0001",
+  "company_tvq": "9876543210 TQ0001",
+  "company_name": "Association des producteurs de fraises\net framboises du Québec",
+  "company_email": "apffq@upa.qc.ca",
+  "company_phone": "450 679-0540 poste 8792",
+  "company_address": "555 Bd Roland-Therrien, Longueuil, QC J4J 5J1",
+  "customer_name": "9129-7051 Québec inc",
+  "customer_address": "59 chemin Myre\nGatineau, QC, J8R 3C7",
+  "customer_member_number": "672",
+  "raw_invoices": [
+    {
+      "Id": "718",
+      "DocNumber": "2025000327",
+      "TxnDate": "2025-09-22T04:00:00.000Z",
+      "DueDate": "2025-10-22T04:00:00.000Z",
+      "TotalAmt": 658.26,
+      "Balance": 658.26,
+      "TxnTaxDetail": { "TotalTax": 82.2 },
+      "Line": [
+        {
+          "Id": "7",
+          "LineNum": 1,
+          "Description": "Contribution annuelle 2025 (production sur une superficie d’au moins 0,8 hectare, mais de moins de 2)",
+          "Amount": 548.9,
+          "DetailType": "SalesItemLineDetail",
+          "SalesItemLineDetail": {
+            "ItemRef": { "value": "61", "name": "Contribution:Contribution annuelle 2025" },
+            "UnitPrice": 548.9,
+            "Qty": 1,
+            "TaxCodeRef": { "value": "7" }
+          }
+        },
+        {
+          "Id": "8",
+          "LineNum": 2,
+          "Description": "Nombre de jours de frais de retard: 258",
+          "Amount": 27.16,
+          "DetailType": "SalesItemLineDetail",
+          "SalesItemLineDetail": {
+            "ItemRef": { "value": "17", "name": "Frais de retard" },
+            "UnitPrice": 27.1592712,
+            "Qty": 1,
+            "TaxCodeRef": { "value": "4" }
+          }
+        },
+        {
+          "Amount": 576.06,
+          "DetailType": "SubTotalLineDetail",
+          "SubTotalLineDetail": {}
+        }
+      ]
+    }
+  ]
+}
