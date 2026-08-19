@@ -18,6 +18,7 @@ import json
 import base64
 import tempfile
 import logging
+import re
 from datetime import datetime
 
 from flask import Flask, request, send_file, jsonify
@@ -159,6 +160,74 @@ def is_frais_retard(item_id, item_name, frais_retard_ids):
         return True
     name = _strip_accents(str(item_name or "")).lower()
     return any(kw in name for kw in FRAIS_RETARD_KEYWORDS)
+
+
+# Noms possibles du champ personnalisé QuickBooks portant le numéro de membre
+# (comparés sans accents ni casse).
+MEMBER_FIELD_NAMES = ("numero de membre", "no de membre", "numero membre", "membre")
+
+
+def extract_member_number(data, raw_invoices):
+    """Détermine le numéro de membre APFFQ à afficher sur le relevé.
+
+    Ordre de priorité :
+      1. `customer_member_number` du payload — sauf s'il est identique à l'ID
+         d'enregistrement QuickBooks du client (Make.com a longtemps mappé
+         `{{9.Id}}` ici, ce qui donnait un faux numéro sur tous les relevés).
+         `customer_member_number_source` lève ce doute : toute valeur autre que
+         « qb_id » (p. ex. « wp », l'API ffq-qb/v1 du site fraises qui fait foi)
+         est retenue telle quelle, même si elle coïncide avec l'ID QuickBooks ;
+      2. champ personnalisé QuickBooks « Numéro de membre » de la fiche client ;
+      3. motif « #1234 » dans le nom d'affichage ou la raison sociale.
+
+    Aucune correspondance → « — ». Un numéro absent est corrigeable ; un numéro
+    faux se rend chez le membre sans que personne ne le remarque.
+    """
+    first = raw_invoices[0] if raw_invoices else {}
+    customer_id = str(first.get("Id", "") or "").strip()
+    explicit = str(data.get("customer_member_number", "") or "").strip()
+    source = str(data.get("customer_member_number_source", "") or "").strip().lower()
+    trusted_source = source not in ("", "qb_id")
+
+    if explicit and (trusted_source or explicit != customer_id):
+        return explicit
+    if explicit:
+        logger.warning(
+            f"[membre] '{explicit}' ignoré: identique à l'ID client QuickBooks — "
+            f"vérifier le mapping customer_member_number dans Make.com"
+        )
+
+    # 2) Champ personnalisé de la fiche client
+    for inv in raw_invoices:
+        for key in ("CustomerCustomField", "CustomField"):
+            fields = inv.get(key) or []
+            if isinstance(fields, dict):
+                fields = [fields]
+            if not isinstance(fields, list):
+                continue
+            for field in fields:
+                if not isinstance(field, dict):
+                    continue
+                name = _strip_accents(str(field.get("Name", "") or "")).strip().lower()
+                if name in MEMBER_FIELD_NAMES:
+                    value = str(field.get("StringValue") or field.get("Value") or "").strip()
+                    if value:
+                        logger.info(f"[membre] #{value} depuis le champ personnalisé '{key}'")
+                        return value
+
+    # 3) Motif #1234 dans le nom ou les notes du client
+    for candidate in (first.get("DisplayName"), first.get("CompanyName"),
+                      data.get("customer_name"), first.get("Notes")):
+        match = re.search(r"#\s*(\d+)", str(candidate or ""))
+        if match:
+            logger.info(f"[membre] #{match.group(1)} extrait du nom '{candidate}'")
+            return match.group(1)
+
+    logger.warning(
+        f"[membre] introuvable pour '{data.get('customer_name', '?')}' "
+        f"(ID client QB {customer_id or '?'}) — affichage « — »"
+    )
+    return "—"
 
 
 def process_raw_invoices(raw_invoices, frais_retard_item_id=FRAIS_RETARD_ITEM_ID):
@@ -660,6 +729,8 @@ def generate_statement_raw():
 
         logger.info(f"[raw] {data.get('customer_name', '?')} — {len(raw_invoices)} facture(s) — "
                      f"Premier DocNumber: {raw_invoices[0].get('DocNumber', '?') if raw_invoices else '?'}")
+
+        data["customer_member_number"] = extract_member_number(data, raw_invoices)
 
         frais_retard_id = data.get("frais_retard_item_id", FRAIS_RETARD_ITEM_ID)
         invoices = process_raw_invoices(raw_invoices, frais_retard_id)
