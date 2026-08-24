@@ -98,6 +98,31 @@ def fmt_money(val):
     return f"{val:,.2f}".replace(",", " ") + " $"
 
 
+def _to_float(value, default=0.0):
+    """Convertit une valeur QuickBooks en float. None/"" /texte → `default`."""
+    if value is None or value == "":
+        return default
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def invoice_balance(inv):
+    """Solde réellement dû d'une facture QuickBooks.
+
+    `TotalAmt` est le montant facturé à l'origine ; il ne bouge pas quand le
+    membre paie. Le solde restant vit dans `Balance` (0 si la facture est
+    acquittée). Utiliser TotalAmt affiche une dette déjà payée sur le relevé.
+    `Balance` absent (ancien payload, saisie manuelle) → on retombe sur
+    TotalAmt, seule valeur connue.
+    """
+    total = _to_float(inv.get("TotalAmt"))
+    if "Balance" in inv and inv.get("Balance") is not None:
+        return _to_float(inv.get("Balance"), total)
+    return total
+
+
 def draw_rounded_rect(cv, x, y, width, height, radius, fill_color, stroke_color=None, stroke_width=0.5):
     cv.saveState()
     cv.setFillColor(fill_color)
@@ -269,13 +294,22 @@ def process_raw_invoices(raw_invoices, frais_retard_item_id=FRAIS_RETARD_ITEM_ID
         else:
             formatted_date = txn_date
 
+        total_amt = _to_float(inv.get("TotalAmt"))
+        balance = invoice_balance(inv)
+        if abs(balance - total_amt) > 0.005:
+            logger.info(
+                f"[solde] facture {inv.get('DocNumber', '?')}: facturé {total_amt:.2f} $, "
+                f"solde dû {balance:.2f} $ (paiements appliqués)"
+            )
+
         processed.append({
             "date": formatted_date,
             "invoice_number": inv.get("DocNumber", "—"),
             "amount": round(montant_services, 2),
             "interest": round(frais_retard, 2),
             "tps": tps, "tvq": tvq,
-            "total": float(inv.get("TotalAmt", 0)),
+            "total": round(total_amt, 2),
+            "balance": round(balance, 2),
         })
     return processed
 
@@ -284,7 +318,7 @@ def calculate_aging(raw_invoices):
     now = datetime.now()
     buckets = [0.0, 0.0, 0.0, 0.0, 0.0]
     for inv in raw_invoices:
-        balance = float(inv.get("TotalAmt", 0))
+        balance = invoice_balance(inv)
         if balance <= 0:
             continue
         due_date_str = inv.get("DueDate", "")
@@ -366,6 +400,10 @@ def generate_statement_pdf(data, invoices):
     total_tps = sum(inv["tps"] for inv in invoices)
     total_tvq = sum(inv["tvq"] for inv in invoices)
     grand_total = sum(inv["total"] for inv in invoices)
+    # Solde réellement dû : facturé moins les paiements déjà appliqués.
+    total_balance = sum(inv.get("balance", inv["total"]) for inv in invoices)
+    total_paid = grand_total - total_balance
+    has_payments = abs(total_paid) > 0.005
 
     # ═════════════════════════════════════════════════════
     # HEADER
@@ -446,7 +484,7 @@ def generate_statement_pdf(data, invoices):
 
     # Carte résumé (droite)
     card_w = 250
-    card_h = 115
+    card_h = 129 if has_payments else 115
     card_x = w - MR - card_w
     card_y = y_section - card_h + 18
 
@@ -461,13 +499,17 @@ def generate_statement_pdf(data, invoices):
     c.setFillColor(DARKER_RED)
     c.drawCentredString(card_x + card_w / 2, card_y + card_h - 20, "RÉSUMÉ DU COMPTE")
 
-    y_line = card_y + card_h - 42
-    for label, val in [
+    summary_lines = [
         ("Sous-total services", fmt_money(total_amount)),
         ("Frais de retard", fmt_money(total_interest)),
         ("TPS", fmt_money(total_tps)),
         ("TVQ", fmt_money(total_tvq)),
-    ]:
+    ]
+    if has_payments:
+        summary_lines.append(("Paiements reçus", "- " + fmt_money(abs(total_paid))))
+
+    y_line = card_y + card_h - 42
+    for label, val in summary_lines:
         c.setFont(F("Poppins-Light"), 8)
         c.setFillColor(TEXT_GRAY)
         c.drawString(card_x + 15, y_line, label)
@@ -483,7 +525,7 @@ def generate_statement_pdf(data, invoices):
     c.setFont(F("Poppins-Bold"), 12)
     c.setFillColor(DARKER_RED)
     c.drawString(card_x + 15, y_line - 8, "TOTAL DÛ")
-    c.drawRightString(card_x + card_w - 15, y_line - 8, fmt_money(grand_total))
+    c.drawRightString(card_x + card_w - 15, y_line - 8, fmt_money(total_balance))
 
     # ═════════════════════════════════════════════════════
     # TABLEAU DES FACTURES
@@ -491,6 +533,8 @@ def generate_statement_pdf(data, invoices):
     y_table = card_y - 25
 
     headers = ["Date", "# Facture", "Montant\nfacture", "Frais de\nretard", "TPS", "TVQ", "Total"]
+    if has_payments:
+        headers.append("Solde\ndû")
     h_style = ParagraphStyle('h', fontName=F('Poppins-Bold'), fontSize=7.5, textColor=DARKER_RED, alignment=TA_CENTER, leading=9.5)
     c_right = ParagraphStyle('cr', fontName=F('Poppins'), fontSize=8, textColor=TEXT_DARK, alignment=TA_RIGHT, leading=11)
     c_center = ParagraphStyle('cc', fontName=F('Poppins'), fontSize=8, textColor=TEXT_DARK, alignment=TA_CENTER, leading=11)
@@ -499,20 +543,28 @@ def generate_statement_pdf(data, invoices):
 
     tdata = [[Paragraph(hh.replace("\n", "<br/>"), h_style) for hh in headers]]
     for inv in invoices:
-        tdata.append([
+        row = [
             Paragraph(inv["date"], c_center), Paragraph(str(inv["invoice_number"]), c_center),
             Paragraph(fmt_money(inv["amount"]), c_right), Paragraph(fmt_money(inv["interest"]), c_right),
             Paragraph(fmt_money(inv["tps"]), c_right), Paragraph(fmt_money(inv["tvq"]), c_right),
             Paragraph(fmt_money(inv["total"]), c_right),
-        ])
-    tdata.append([
+        ]
+        if has_payments:
+            row.append(Paragraph(fmt_money(inv.get("balance", inv["total"])), c_right))
+        tdata.append(row)
+    total_row = [
         Paragraph("", t_style), Paragraph("TOTAL", t_label),
         Paragraph(fmt_money(total_amount), t_style), Paragraph(fmt_money(total_interest), t_style),
         Paragraph(fmt_money(total_tps), t_style), Paragraph(fmt_money(total_tvq), t_style),
         Paragraph(fmt_money(grand_total), t_style),
-    ])
+    ]
+    if has_payments:
+        total_row.append(Paragraph(fmt_money(total_balance), t_style))
+    tdata.append(total_row)
 
     base = [70, 66, 80, 92, 70, 70, 80]
+    if has_payments:
+        base = [62, 60, 72, 82, 58, 58, 70, 70]
     base_total = sum(base)
     col_w = [round(v / base_total * CW) for v in base]
     col_w[-1] = CW - sum(col_w[:-1])
@@ -606,6 +658,9 @@ def generate_statement():
                     return jsonify({"error": f"Facture {i}: champ '{key}' manquant."}), 400
             for key in ("amount", "interest", "tps", "tvq", "total"):
                 inv[key] = float(inv[key])
+            # « balance » facultatif : solde restant dû si des paiements ont
+            # été appliqués. Absent → la facture est réputée impayée en entier.
+            inv["balance"] = _to_float(inv.get("balance"), inv["total"])
 
         logger.info(f"[generate-statement] {data.get('customer_name')} — {len(invoices)} facture(s)")
         pdf_buffer = generate_statement_pdf(data, invoices)
