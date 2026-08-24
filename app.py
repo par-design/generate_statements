@@ -83,6 +83,10 @@ COMBINED_RATE = TPS_RATE + TVQ_RATE
 FRAIS_RETARD_ITEM_ID = ["17", "18"]
 # Détection de secours par nom d'article (insensible à la casse/accents) si l'ID ne correspond pas.
 FRAIS_RETARD_KEYWORDS = ("frais de retard", "frais retard", "interet", "intérêt", "late fee", "penalite", "pénalité")
+# Champs qui n'existent que sur l'entité Customer de QuickBooks : leur présence
+# trahit un payload Make où la fiche client est fusionnée dans la facture.
+CUSTOMER_ONLY_KEYS = ("BalanceWithJobs", "FullyQualifiedName", "PrintOnCheckName",
+                      "DisplayName", "PreferredDeliveryMethod", "BillWithParent")
 
 # ── Layout constants ────────────────────────────────────
 ML = 35           # Marge gauche
@@ -108,19 +112,108 @@ def _to_float(value, default=0.0):
         return default
 
 
-def invoice_balance(inv):
-    """Solde réellement dû d'une facture QuickBooks.
+def _parse_qb_date(value):
+    """Date QuickBooks (« 2026-05-15 » ou ISO avec heure) → datetime naïf."""
+    text = str(value or "").strip()
+    if not text:
+        return None
+    try:
+        if "T" in text:
+            return datetime.fromisoformat(text.replace("Z", "+00:00")).replace(tzinfo=None)
+        return datetime.strptime(text[:10], "%Y-%m-%d")
+    except (ValueError, TypeError):
+        return None
 
-    `TotalAmt` est le montant facturé à l'origine ; il ne bouge pas quand le
-    membre paie. Le solde restant vit dans `Balance` (0 si la facture est
-    acquittée). Utiliser TotalAmt affiche une dette déjà payée sur le relevé.
-    `Balance` absent (ancien payload, saisie manuelle) → on retombe sur
-    TotalAmt, seule valeur connue.
+
+def is_customer_record(inv):
+    """Vrai si le scénario Make a fusionné la fiche client dans la facture.
+
+    Make.com envoie un objet qui mélange les champs de la facture et ceux du
+    client. Ces clés-là n'existent que sur l'entité Customer de QuickBooks ;
+    leur présence signifie que « Balance » a été écrasé par le solde GLOBAL du
+    client — la même valeur sur chaque facture — et non le solde de la facture.
     """
-    total = _to_float(inv.get("TotalAmt"))
-    if "Balance" in inv and inv.get("Balance") is not None:
-        return _to_float(inv.get("Balance"), total)
-    return total
+    return any(k in inv for k in CUSTOMER_ONLY_KEYS)
+
+
+def account_balance_from_raw(raw_invoices):
+    """Solde du compte client, quand le payload porte la fiche client.
+
+    Retourne None si le payload ne contient pas de solde client exploitable.
+    """
+    for inv in raw_invoices:
+        if isinstance(inv, dict) and is_customer_record(inv) and inv.get("Balance") is not None:
+            return _to_float(inv.get("Balance"))
+    return None
+
+
+def resolve_balances(raw_invoices):
+    """Solde restant dû par facture, aligné sur `raw_invoices`.
+
+    `TotalAmt` est le montant facturé à l'origine : il ne bouge pas quand le
+    membre paie, donc l'utiliser tel quel affiche une dette déjà acquittée.
+
+    Deux formes de payload :
+
+    * facture pure → « Balance » est le solde de CETTE facture, on le prend ;
+    * facture fusionnée avec la fiche client (le cas de Make.com) → « Balance »
+      est le solde global du client, identique sur chaque ligne. L'additionner
+      multiplierait la dette par le nombre de factures. On le répartit plutôt
+      sur les factures, en supposant que les paiements ont réglé les plus
+      anciennes d'abord (convention comptable usuelle) : le reliquat se pose
+      donc sur les plus récentes.
+
+    Retourne (soldes, source) où source vaut "invoice" (solde certain, facture
+    par facture) ou "account" (solde du compte réparti, donc estimé par ligne).
+    """
+    totals = [_to_float(inv.get("TotalAmt")) for inv in raw_invoices]
+
+    if not any(is_customer_record(inv) for inv in raw_invoices if isinstance(inv, dict)):
+        balances = []
+        for inv, total in zip(raw_invoices, totals):
+            if inv.get("Balance") is not None:
+                balances.append(_to_float(inv.get("Balance"), total))
+            else:
+                balances.append(total)
+        return balances, "invoice"
+
+    account = account_balance_from_raw(raw_invoices)
+    grand_total = sum(totals)
+    if account is None:
+        return totals, "account"
+
+    if account > grand_total + 0.005:
+        # Le client doit plus que ce que le relevé énumère : des factures
+        # manquent à l'appel. Mieux vaut un document cohérent avec ses propres
+        # lignes qu'un total invérifiable.
+        logger.warning(
+            f"[solde] solde client {account:.2f} $ > total des factures listées "
+            f"{grand_total:.2f} $ — factures manquantes dans le payload Make, "
+            f"on s'en tient au total listé"
+        )
+        return totals, "account"
+
+    if abs(account - grand_total) <= 0.005:
+        return totals, "account"
+
+    logger.info(
+        f"[solde] solde client {account:.2f} $ pour {grand_total:.2f} $ facturés — "
+        f"{grand_total - account:.2f} $ de paiements répartis (plus anciennes d'abord)"
+    )
+    order = sorted(
+        range(len(raw_invoices)),
+        key=lambda i: (_parse_qb_date(raw_invoices[i].get("DueDate"))
+                       or _parse_qb_date(raw_invoices[i].get("TxnDate"))
+                       or datetime.min, i),
+        reverse=True,   # la plus récente encaisse le reliquat
+    )
+    balances = [0.0] * len(raw_invoices)
+    remaining = account
+    for i in order:
+        take = min(max(remaining, 0.0), totals[i])
+        balances[i] = round(take, 2)
+        remaining -= take
+    return balances, "account"
 
 
 def draw_rounded_rect(cv, x, y, width, height, radius, fill_color, stroke_color=None, stroke_width=0.5):
@@ -255,12 +348,15 @@ def extract_member_number(data, raw_invoices):
     return "—"
 
 
-def process_raw_invoices(raw_invoices, frais_retard_item_id=FRAIS_RETARD_ITEM_ID):
+def process_raw_invoices(raw_invoices, frais_retard_item_id=FRAIS_RETARD_ITEM_ID, balances=None):
     # Accepte un ID unique ("17") ou une liste (["17", "18"]).
     frais_retard_ids = frais_retard_item_id if isinstance(frais_retard_item_id, (list, tuple)) else [frais_retard_item_id]
 
+    if balances is None:
+        balances, _ = resolve_balances(raw_invoices)
+
     processed = []
-    for inv in raw_invoices:
+    for idx, inv in enumerate(raw_invoices):
         frais_retard = 0.0
         montant_services = 0.0
 
@@ -295,12 +391,7 @@ def process_raw_invoices(raw_invoices, frais_retard_item_id=FRAIS_RETARD_ITEM_ID
             formatted_date = txn_date
 
         total_amt = _to_float(inv.get("TotalAmt"))
-        balance = invoice_balance(inv)
-        if abs(balance - total_amt) > 0.005:
-            logger.info(
-                f"[solde] facture {inv.get('DocNumber', '?')}: facturé {total_amt:.2f} $, "
-                f"solde dû {balance:.2f} $ (paiements appliqués)"
-            )
+        balance = balances[idx] if idx < len(balances) else total_amt
 
         processed.append({
             "date": formatted_date,
@@ -314,23 +405,18 @@ def process_raw_invoices(raw_invoices, frais_retard_item_id=FRAIS_RETARD_ITEM_ID
     return processed
 
 
-def calculate_aging(raw_invoices):
+def calculate_aging(raw_invoices, balances=None):
+    if balances is None:
+        balances, _ = resolve_balances(raw_invoices)
+
     now = datetime.now()
     buckets = [0.0, 0.0, 0.0, 0.0, 0.0]
-    for inv in raw_invoices:
-        balance = invoice_balance(inv)
+    for idx, inv in enumerate(raw_invoices):
+        balance = balances[idx] if idx < len(balances) else _to_float(inv.get("TotalAmt"))
         if balance <= 0:
             continue
-        due_date_str = inv.get("DueDate", "")
-        if not due_date_str:
-            buckets[0] += balance
-            continue
-        try:
-            if "T" in due_date_str:
-                due_date = datetime.fromisoformat(due_date_str.replace("Z", "+00:00")).replace(tzinfo=None)
-            else:
-                due_date = datetime.strptime(due_date_str, "%Y-%m-%d")
-        except (ValueError, TypeError):
+        due_date = _parse_qb_date(inv.get("DueDate"))
+        if due_date is None:
             buckets[0] += balance
             continue
         days = (now - due_date).days
@@ -403,7 +489,11 @@ def generate_statement_pdf(data, invoices):
     # Solde réellement dû : facturé moins les paiements déjà appliqués.
     total_balance = sum(inv.get("balance", inv["total"]) for inv in invoices)
     total_paid = grand_total - total_balance
-    has_payments = abs(total_paid) > 0.005
+    has_payments = total_paid > 0.005
+    # Colonne « Solde dû » seulement si le solde est connu facture par facture.
+    # Sur un payload Make, il vient du compte client et n'est qu'une répartition
+    # estimée par ligne : l'afficher donnerait un chiffre invérifiable au membre.
+    show_balance_col = has_payments and data.get("balance_source") != "account"
 
     # ═════════════════════════════════════════════════════
     # HEADER
@@ -533,7 +623,7 @@ def generate_statement_pdf(data, invoices):
     y_table = card_y - 25
 
     headers = ["Date", "# Facture", "Montant\nfacture", "Frais de\nretard", "TPS", "TVQ", "Total"]
-    if has_payments:
+    if show_balance_col:
         headers.append("Solde\ndû")
     h_style = ParagraphStyle('h', fontName=F('Poppins-Bold'), fontSize=7.5, textColor=DARKER_RED, alignment=TA_CENTER, leading=9.5)
     c_right = ParagraphStyle('cr', fontName=F('Poppins'), fontSize=8, textColor=TEXT_DARK, alignment=TA_RIGHT, leading=11)
@@ -549,7 +639,7 @@ def generate_statement_pdf(data, invoices):
             Paragraph(fmt_money(inv["tps"]), c_right), Paragraph(fmt_money(inv["tvq"]), c_right),
             Paragraph(fmt_money(inv["total"]), c_right),
         ]
-        if has_payments:
+        if show_balance_col:
             row.append(Paragraph(fmt_money(inv.get("balance", inv["total"])), c_right))
         tdata.append(row)
     total_row = [
@@ -558,13 +648,13 @@ def generate_statement_pdf(data, invoices):
         Paragraph(fmt_money(total_tps), t_style), Paragraph(fmt_money(total_tvq), t_style),
         Paragraph(fmt_money(grand_total), t_style),
     ]
-    if has_payments:
+    if show_balance_col:
         total_row.append(Paragraph(fmt_money(total_balance), t_style))
     tdata.append(total_row)
 
     base = [70, 66, 80, 92, 70, 70, 80]
-    if has_payments:
-        base = [62, 60, 72, 82, 58, 58, 70, 70]
+    if show_balance_col:
+        base = [62, 68, 72, 82, 56, 56, 68, 68]
     base_total = sum(base)
     col_w = [round(v / base_total * CW) for v in base]
     col_w[-1] = CW - sum(col_w[:-1])
@@ -788,8 +878,10 @@ def generate_statement_raw():
         data["customer_member_number"] = extract_member_number(data, raw_invoices)
 
         frais_retard_id = data.get("frais_retard_item_id", FRAIS_RETARD_ITEM_ID)
-        invoices = process_raw_invoices(raw_invoices, frais_retard_id)
-        data["aging"] = calculate_aging(raw_invoices)
+        balances, balance_source = resolve_balances(raw_invoices)
+        data["balance_source"] = balance_source
+        invoices = process_raw_invoices(raw_invoices, frais_retard_id, balances)
+        data["aging"] = calculate_aging(raw_invoices, balances)
 
         # Auto-extraire le nom du producteur depuis la première facture si non fourni
         if not data.get("customer_producer_name") and raw_invoices:
