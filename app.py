@@ -93,6 +93,45 @@ ML = 35           # Marge gauche
 MR = 35           # Marge droite
 RADIUS = 8        # Coins arrondis
 
+# ── Fenêtre de l'enveloppe APFFQ ────────────────────────
+# Enveloppe #10 (9½" × 4¼"), fenêtre de 4½" × 1" positionnée à 5/8" du bord
+# gauche et ¾" du bord inférieur (donc 2½" du bord supérieur : 2½ + 1 + ¾ = 4¼).
+#
+# La feuille Letter est pliée en trois panneaux de 11/3 = 3,667". Le paquet plié
+# repose au fond de l'enveloppe et c'est le tiers SUPÉRIEUR de la page qui se
+# présente dans la fenêtre. La bande découverte va donc, mesurée depuis le haut
+# de la page, de 3,667 − 1,75 = 1,917" à 3,667 − 0,75 = 2,917".
+#
+# Tant que le bloc destinataire tient entre WINDOW_TOP et WINDOW_BOTTOM (marge de
+# sécurité comprise), la plieuse-inséreuse suffit : plus besoin de replier les
+# feuilles à la main pour faire remonter l'adresse.
+WINDOW_TOP = 138.0        # 1,917" × 72 — haut de la bande visible
+WINDOW_BOTTOM = 210.0     # 2,917" × 72 — bas de la bande visible
+WINDOW_SAFE = 9.0         # 1/8" de sécurité sur chaque bord (glissement du pli)
+
+# Horizontalement, le paquet de 8½" flotte dans une enveloppe de 9½". Repères
+# ci-dessous : position de la fenêtre sur la page quand le paquet est centré.
+WINDOW_LEFT = 9.0         # 0,125" × 72
+WINDOW_WIDTH = 324.0      # 4½" × 72
+
+# Le paquet peut coulisser de ~0,9" dans l'enveloppe. Selon qu'il est plaqué à
+# gauche ou à droite, la fenêtre balaie la page de 45 à 369 pt ou de −20 à
+# 304 pt : seule la bande ci-dessous est visible dans TOUS les cas.
+WINDOW_X_MIN = 45.0
+WINDOW_X_MAX = 304.0
+
+# Le bloc destinataire est posé à 65 pt plutôt qu'aligné sur ML + 15 : ça laisse
+# 20 pt de marge à gauche au lieu de 5 pt si le paquet est plaqué à gauche.
+ADDRESS_X = 65.0
+ADDRESS_MAX_W = WINDOW_X_MAX - ADDRESS_X
+FOLD_HEIGHT = 792.0 / 3   # 3,667" — hauteur d'un panneau du pli en trois
+
+# Haut de la carte « Résumé du compte », aligné sur le trait du bloc destinataire.
+CARD_TOP = 140.0
+
+# Affiché à la place du numéro de membre quand aucun n'a pu être déterminé.
+NO_MEMBER_NUMBER = "—"
+
 
 # ═══════════════════════════════════════════════════════════
 # HELPERS
@@ -343,9 +382,9 @@ def extract_member_number(data, raw_invoices):
 
     logger.warning(
         f"[membre] introuvable pour '{data.get('customer_name', '?')}' "
-        f"(ID client QB {customer_id or '?'}) — affichage « — »"
+        f"(ID client QB {customer_id or '?'}) — relevé ignoré"
     )
-    return "—"
+    return NO_MEMBER_NUMBER
 
 
 def process_raw_invoices(raw_invoices, frais_retard_item_id=FRAIS_RETARD_ITEM_ID, balances=None):
@@ -438,6 +477,84 @@ def calculate_aging(raw_invoices, balances=None):
 # GÉNÉRATION PDF — DESIGN V2 FINAL APFFQ
 # ═══════════════════════════════════════════════════════════
 
+GUIDE_COLOR = HexColor("#0090C0")
+
+
+def draw_fitted(cv, x, y, text, font, size, max_width, min_size=6.5):
+    """Écrit le texte en rétrécissant la police jusqu'à tenir dans `max_width`.
+
+    Le bloc destinataire doit rester dans la fenêtre de l'enveloppe : les raisons
+    sociales longues (« Les Jardins Maraîchers de la Rivière-du-Nord et Fils
+    inc. ») débordaient à droite et se faisaient couper par le papier. Perdre un
+    point ou deux de corps reste lisible ; se faire tronquer par l'enveloppe non.
+    """
+    while size > min_size and cv.stringWidth(text, font, size) > max_width:
+        size -= 0.25
+    cv.setFont(font, size)
+    cv.drawString(x, y, text)
+
+
+def wrap_to_width(cv, text, font, size, max_width):
+    """Découpe le texte aux espaces pour qu'aucun morceau ne dépasse max_width.
+
+    QuickBooks livre l'adresse tantôt sur trois lignes, tantôt concaténée sur une
+    seule (« 11 000, rang Sainte-Henriette Mirabel, Québec, J7J 1Z9 »). Sous
+    6,5 pt le rétrécissement de draw_fitted cesse d'être lisible : passé cette
+    limite, mieux vaut replier.
+    """
+    words = text.split()
+    if not words:
+        return []
+    lines, current = [], words[0]
+    for word in words[1:]:
+        trial = f"{current} {word}"
+        if cv.stringWidth(trial, font, size) <= max_width:
+            current = trial
+        else:
+            lines.append(current)
+            current = word
+    lines.append(current)
+    return lines
+
+
+def draw_envelope_guides(cv, w, h):
+    """Imprime le contour de la fenêtre d'enveloppe et les lignes de pli.
+
+    Sert à valider la mise en page sur une vraie enveloppe : on imprime, on plie
+    sur les deux traits, on insère, et le bloc destinataire doit tomber
+    entièrement dans le rectangle. Le rectangle correspond à un paquet centré ;
+    comme la feuille de 8½" flotte dans une enveloppe de 9½", la fenêtre réelle
+    peut glisser jusqu'à un demi-pouce à gauche ou à droite.
+
+    Activé par `envelope_guides` dans le payload — jamais sur un relevé de membre.
+    """
+    cv.saveState()
+    cv.setStrokeColor(GUIDE_COLOR)
+    cv.setFillColor(GUIDE_COLOR)
+    cv.setLineWidth(0.8)
+    cv.setDash(4, 3)
+    cv.rect(WINDOW_LEFT, h - WINDOW_BOTTOM, WINDOW_WIDTH,
+            WINDOW_BOTTOM - WINDOW_TOP, fill=0, stroke=1)
+    # Bande garantie quel que soit le glissement du paquet : c'est elle, et non
+    # le rectangle nominal, que le bloc destinataire ne doit jamais déborder.
+    cv.setDash(1, 2)
+    cv.line(WINDOW_X_MIN, h - WINDOW_BOTTOM, WINDOW_X_MIN, h - WINDOW_TOP)
+    cv.line(WINDOW_X_MAX, h - WINDOW_BOTTOM, WINDOW_X_MAX, h - WINDOW_TOP)
+    cv.setDash(4, 3)
+    for n in (1, 2):
+        y_fold = h - FOLD_HEIGHT * n
+        cv.line(0, y_fold, w, y_fold)
+
+    cv.setDash()
+    cv.setFont(F("Poppins-Medium"), 6.5)
+    cv.drawString(WINDOW_LEFT, h - WINDOW_TOP + 4,
+                  'FENÊTRE DE L\'ENVELOPPE — 4½" × 1"')
+    for n in (1, 2):
+        y_fold = h - FOLD_HEIGHT * n
+        cv.drawRightString(w - MR, y_fold + 4, f"PLI {n}")
+    cv.restoreState()
+
+
 def generate_statement_pdf(data, invoices):
     w, h = letter
     CW = w - ML - MR
@@ -454,7 +571,7 @@ def generate_statement_pdf(data, invoices):
     customer_name = data.get("customer_name", "Client")
     customer_producer_name = data.get("customer_producer_name", "")
     customer_address = data.get("customer_address", "")
-    customer_member_number = data.get("customer_member_number", "—")
+    customer_member_number = data.get("customer_member_number", NO_MEMBER_NUMBER)
     statement_date = data.get("statement_date", datetime.now().strftime("%d-%m-%Y"))
     period_start = data.get("period_start", "01-01-2025")
     period_end = data.get("period_end", datetime.now().strftime("%d-%m-%Y"))
@@ -498,7 +615,9 @@ def generate_statement_pdf(data, invoices):
     # ═════════════════════════════════════════════════════
     # HEADER
     # ═════════════════════════════════════════════════════
-    header_h = 110
+    # En-tête resserré (110 → 88 pt) : les 22 pt récupérés servent à faire
+    # remonter le bloc destinataire dans la fenêtre de l'enveloppe.
+    header_h = 88
     c.setFillColor(white)
     c.rect(0, h - header_h, w, header_h, fill=1, stroke=0)
     c.setFillColor(RED)
@@ -506,34 +625,37 @@ def generate_statement_pdf(data, invoices):
 
     if logo_tmp_path and os.path.exists(logo_tmp_path):
         try:
-            c.drawImage(logo_tmp_path, ML, h - header_h + 18, width=65, height=54,
+            c.drawImage(logo_tmp_path, ML, h - header_h + 14, width=55, height=46,
                         preserveAspectRatio=True, mask='auto')
         except Exception:
             pass
 
     name_lines = company_name.split("\n") if "\n" in company_name else [company_name]
-    c.setFont(F("Poppins-Bold"), 10)
+    c.setFont(F("Poppins-Bold"), 9.5)
     c.setFillColor(DARKER_RED)
-    y_name = h - 45
+    y_name = h - 36
     for nl in name_lines:
-        c.drawString(110, y_name, nl.strip())
-        y_name -= 13
+        c.drawString(100, y_name, nl.strip())
+        y_name -= 12
 
     c.setFont(F("Poppins-Medium"), 7)
     c.setFillColor(TEXT_DARK)
     addr_line = company_address.replace("\n", ", ")
-    c.drawString(110, h - 73, f"{addr_line}  |  Tél: {company_phone}")
-    c.drawString(110, h - 84, f"{company_email}  |  TPS: {company_tps}  |  TVQ: {company_tvq}")
+    c.drawString(100, h - 61, f"{addr_line}  |  Tél: {company_phone}")
+    c.drawString(100, h - 71, f"{company_email}  |  TPS: {company_tps}  |  TVQ: {company_tvq}")
 
-    c.setFont(F("Poppins-Bold"), 22)
+    c.setFont(F("Poppins-Bold"), 19)
     c.setFillColor(DARKER_RED)
-    c.drawRightString(w - MR, h - 55, "RELEVÉ DE")
-    c.drawRightString(w - MR, h - 80, "COMPTE")
+    c.drawRightString(w - MR, h - 44, "RELEVÉ DE")
+    c.drawRightString(w - MR, h - 65, "COMPTE")
 
     # ═════════════════════════════════════════════════════
     # BANDE INFO
     # ═════════════════════════════════════════════════════
-    y_info = h - header_h - 40
+    # Remontée sous l'en-tête : l'encadré descendait jusqu'à 158 pt et mordait
+    # donc sur la fenêtre (138–210 pt), au détriment de l'adresse. Il s'arrête
+    # maintenant à 132 pt, ce qui libère toute la bande pour le destinataire.
+    y_info = h - header_h - 36
     draw_rounded_rect(c, ML, y_info - 8, CW, 38, RADIUS, white, PINK, 1)
     c.setFont(F("Poppins-Medium"), 8)
     c.setFillColor(DARKER_RED)
@@ -544,39 +666,56 @@ def generate_statement_pdf(data, invoices):
     # ═════════════════════════════════════════════════════
     # CLIENT + CARTE RÉSUMÉ
     # ═════════════════════════════════════════════════════
-    y_section = y_info - 45
+    # Destinataire (gauche) — calé sur la fenêtre de l'enveloppe.
+    #
+    # La mention « FACTURER À » a été retirée : elle mangeait une ligne entière
+    # de la bande visible, qui n'en compte qu'une poignée.
+    #
+    # Le bloc est composé d'abord et tracé ensuite : son nombre de lignes varie
+    # (producteur facultatif, adresse sur une à trois lignes, repli des lignes
+    # trop larges) et c'est lui qui détermine l'interligne. Deux à quatre lignes
+    # gardent les 13 pt habituels ; au-delà, l'interligne se resserre pour que la
+    # dernière ligne reste au-dessus de WINDOW_BOTTOM.
+    addr_font = F("Poppins-Light")
+    block = []
+    if customer_producer_name:
+        block.append((customer_producer_name, F("Poppins-Medium"), 8.5, TEXT_GRAY))
+    block.append((customer_name, F("Poppins-Bold"), 10, TEXT_DARK))
+    for raw_line in customer_address.split("\n"):
+        line = raw_line.strip()
+        if not line:
+            continue
+        for piece in wrap_to_width(c, line, addr_font, 8.5, ADDRESS_MAX_W):
+            block.append((piece, addr_font, 8.5, TEXT_GRAY))
 
-    # Client (gauche)
-    c.setFont(F("Poppins-Bold"), 8)
-    c.setFillColor(RED)
-    c.drawString(ML + 10, y_section, "FACTURER À")
+    y_block_top = h - (WINDOW_TOP + WINDOW_SAFE)
+    y_block_bot = h - (WINDOW_BOTTOM - WINDOW_SAFE)
+    # Interligne nominal de 13 pt, resserré seulement s'il faut caser six lignes.
+    leading = 13.0
+    if len(block) > 1:
+        leading = min(leading, (y_block_top - y_block_bot) / (len(block) - 1))
+
+    y_line = y_block_top
+    for text, font, size, color in block:
+        c.setFillColor(color)
+        draw_fitted(c, ADDRESS_X, y_line, text, font, size, ADDRESS_MAX_W)
+        y_line -= leading
+
+    # Trait tracé après coup, sur la hauteur réellement occupée : de longueur
+    # fixe, il dépassait sous les adresses courtes.
     c.setStrokeColor(RED)
     c.setLineWidth(2.5)
-    # Adjust sidebar line height if producer name is present
-    sidebar_top = y_section + 8
-    sidebar_bot = y_section - 60 if customer_producer_name else y_section - 48
-    c.line(ML + 5, sidebar_bot, ML + 5, sidebar_top)
-    y_billing = y_section - 14
-    if customer_producer_name:
-        c.setFont(F("Poppins-Medium"), 8.5)
-        c.setFillColor(TEXT_GRAY)
-        c.drawString(ML + 15, y_billing, customer_producer_name)
-        y_billing -= 14
-    c.setFont(F("Poppins-Bold"), 10)
-    c.setFillColor(TEXT_DARK)
-    c.drawString(ML + 15, y_billing, customer_name)
-    c.setFont(F("Poppins-Light"), 8.5)
-    c.setFillColor(TEXT_GRAY)
-    y_a = y_billing - 14
-    for line in customer_address.split("\n"):
-        c.drawString(ML + 15, y_a, line.strip())
-        y_a -= 12
+    # Volontairement laissé à ML + 5 (40 pt) : en deçà de la bande 45–304 pt, il
+    # ne risque donc pas d'apparaître dans la fenêtre à côté de l'adresse.
+    c.line(ML + 5, y_line + leading - 6, ML + 5, y_block_top + 8)
 
     # Carte résumé (droite)
     card_w = 250
     card_h = 129 if has_payments else 115
     card_x = w - MR - card_w
-    card_y = y_section - card_h + 18
+    # Découplée du bloc destinataire : celui-ci est désormais contraint par la
+    # fenêtre de l'enveloppe, la carte se cale simplement sous la bande info.
+    card_y = h - CARD_TOP - card_h
 
     draw_rounded_rect(c, card_x, card_y, card_w, card_h, RADIUS, white, DARK_RED, 1)
 
@@ -713,6 +852,9 @@ def generate_statement_pdf(data, invoices):
         f"Généré le {datetime.now().strftime('%d-%m-%Y à %H:%M')}"
         " — Ce document est un relevé de compte et non une facture.")
 
+    if data.get("envelope_guides"):
+        draw_envelope_guides(c, w, h)
+
     c.save()
 
     if logo_tmp_path and logo_tmp_path != DEFAULT_LOGO and os.path.exists(logo_tmp_path):
@@ -725,6 +867,49 @@ def generate_statement_pdf(data, invoices):
 # ═══════════════════════════════════════════════════════════
 # ROUTES FLASK
 # ═══════════════════════════════════════════════════════════
+
+def _as_bool(val, default=True):
+    """Lit un booléen tolérant : Make.com envoie souvent « true »/« 0 » en texte."""
+    if isinstance(val, bool):
+        return val
+    text = str(val or "").strip().lower()
+    if not text:
+        return default
+    return text in ("1", "true", "yes", "oui", "vrai")
+
+
+def skip_non_member(data):
+    """Réponse à renvoyer quand le client n'est pas un membre, sinon None.
+
+    Seuls les membres reçoivent un relevé : les fiches QuickBooks sans numéro de
+    membre (« Pupilles », comptes internes, fournisseurs) doivent être écartées
+    plutôt que de produire un PDF qui partira à la poste pour rien.
+
+    On répond 200 — et non une erreur — pour que le scénario Make.com puisse
+    filtrer sans que la branche parte en échec. Trois façons de filtrer côté
+    Make : le champ `skipped` du corps, le Content-Type (JSON au lieu de PDF),
+    ou l'en-tête X-Statement-Skipped.
+
+    `require_member_number: false` dans le payload force la génération malgré
+    tout, pour les cas hors série (test, relevé produit à la main).
+    """
+    if not _as_bool(data.get("require_member_number"), True):
+        return None
+
+    number = str(data.get("customer_member_number", "") or "").strip()
+    if number and number != NO_MEMBER_NUMBER:
+        return None
+
+    customer = data.get("customer_name", "?")
+    logger.info(f"[skip] '{customer}' — aucun numéro de membre, relevé non généré")
+    resp = jsonify({
+        "skipped": True,
+        "reason": "no_member_number",
+        "customer_name": data.get("customer_name", ""),
+    })
+    resp.headers["X-Statement-Skipped"] = "no_member_number"
+    return resp, 200
+
 
 @app.route("/health", methods=["GET"])
 def health():
@@ -751,6 +936,10 @@ def generate_statement():
             # « balance » facultatif : solde restant dû si des paiements ont
             # été appliqués. Absent → la facture est réputée impayée en entier.
             inv["balance"] = _to_float(inv.get("balance"), inv["total"])
+
+        skipped = skip_non_member(data)
+        if skipped:
+            return skipped
 
         logger.info(f"[generate-statement] {data.get('customer_name')} — {len(invoices)} facture(s)")
         pdf_buffer = generate_statement_pdf(data, invoices)
@@ -876,6 +1065,10 @@ def generate_statement_raw():
                      f"Premier DocNumber: {raw_invoices[0].get('DocNumber', '?') if raw_invoices else '?'}")
 
         data["customer_member_number"] = extract_member_number(data, raw_invoices)
+
+        skipped = skip_non_member(data)
+        if skipped:
+            return skipped
 
         frais_retard_id = data.get("frais_retard_item_id", FRAIS_RETARD_ITEM_ID)
         balances, balance_source = resolve_balances(raw_invoices)
