@@ -387,6 +387,74 @@ def extract_member_number(data, raw_invoices):
     return NO_MEMBER_NUMBER
 
 
+# Provinces et territoires, avec leurs abréviations : sert à repérer où couper
+# une adresse livrée sur une seule ligne.
+PROVINCE_KEYS = {
+    "quebec", "qc", "ontario", "on", "nouveau-brunswick", "nb",
+    "nouvelle-ecosse", "ns", "ile-du-prince-edouard", "pe",
+    "terre-neuve-et-labrador", "nl", "manitoba", "mb", "saskatchewan", "sk",
+    "alberta", "ab", "colombie-britannique", "bc", "yukon", "yt",
+    "territoires du nord-ouest", "nt", "nunavut", "nu",
+}
+
+
+def split_single_line_address(address):
+    """Coupe une adresse d'une seule ligne en « rue » puis « ville province CP ».
+
+    Filet de sécurité quand la fiche client n'a pas d'adresse structurée : on
+    coupe au segment qui porte la province, faute de quoi à la dernière virgule.
+    """
+    parts = [p.strip() for p in address.split(",") if p.strip()]
+    if len(parts) < 2:
+        return [address.strip()] if address.strip() else []
+    for i in range(len(parts) - 1, 0, -1):
+        if _strip_accents(parts[i]).lower() in PROVINCE_KEYS:
+            return [", ".join(parts[:i]), " ".join(parts[i:])]
+    return [", ".join(parts[:-1]), parts[-1]]
+
+
+def format_customer_address(data, raw_invoices):
+    """Compose l'adresse du destinataire sur deux lignes.
+
+    Make.com livre `customer_address` concaténé sur une seule ligne
+    (« 11 000, rang Sainte-Henriette Mirabel, Québec, J7J 1Z9 »), qui déborde de
+    la fenêtre de l'enveloppe dès que la rue est un peu longue. La fiche client
+    porte pourtant l'adresse structurée dans BillAddr : on la recompose au format
+    postal — rue d'abord, puis ville, province et code postal — ce qui tient
+    dans la largeur et laisse à l'adresse la place de s'allonger.
+
+    Sans BillAddr exploitable, on retombe sur `customer_address` tel quel s'il
+    est déjà sur plusieurs lignes, sinon on le coupe avant la province.
+    """
+    addr = {}
+    for inv in raw_invoices:
+        candidate = inv.get("BillAddr") or inv.get("ShipAddr")
+        if isinstance(candidate, dict) and candidate.get("Line1"):
+            addr = candidate
+            break
+
+    if addr:
+        lines = [str(addr.get(k, "") or "").strip() for k in ("Line1", "Line2", "Line3")]
+        lines = [s for s in lines if s]
+        city = str(addr.get("City", "") or "").strip()
+        province = str(addr.get("CountrySubDivisionCode", "") or "").strip()
+        postal = str(addr.get("PostalCode", "") or "").strip()
+        # Format postal québécois, celui que l'APFFQ utilise déjà sur ses
+        # enveloppes : « Longueuil (Québec)  J4H 3Y9 ». Sans ville, la province
+        # perd ses parenthèses — elles n'encadreraient plus rien.
+        region = f"({province})" if (province and city) else province
+        locality = " ".join(p for p in (city, region, postal) if p)
+        if locality:
+            lines.append(locality)
+        if lines:
+            return "\n".join(lines)
+
+    existing = str(data.get("customer_address", "") or "").strip()
+    if "\n" in existing:
+        return existing
+    return "\n".join(split_single_line_address(existing))
+
+
 def process_raw_invoices(raw_invoices, frais_retard_item_id=FRAIS_RETARD_ITEM_ID, balances=None):
     # Accepte un ID unique ("17") ou une liste (["17", "18"]).
     frais_retard_ids = frais_retard_item_id if isinstance(frais_retard_item_id, (list, tuple)) else [frais_retard_item_id]
@@ -1065,6 +1133,7 @@ def generate_statement_raw():
                      f"Premier DocNumber: {raw_invoices[0].get('DocNumber', '?') if raw_invoices else '?'}")
 
         data["customer_member_number"] = extract_member_number(data, raw_invoices)
+        data["customer_address"] = format_customer_address(data, raw_invoices)
 
         skipped = skip_non_member(data)
         if skipped:
