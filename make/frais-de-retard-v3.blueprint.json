@@ -275,6 +275,18 @@
      {
       "name": "fee",
       "value": "{{round(8.base * 7.taux_annuel * max(0; 7.chargeable_days - 8.days_already_charged) / 365 * 100) / 100}}"
+     },
+     {
+      "name": "subtotal_pre",
+      "value": ",{\"Amount\":{{first(map(12.body.Invoice.Line; \"Amount\"; \"DetailType\"; \"SubTotalLineDetail\"))}},\"DetailType\":\"SubTotalLineDetail\",\"SubTotalLineDetail\":{}}"
+     },
+     {
+      "name": "subtotal_post",
+      "value": "{\"Amount\":{{first(map(12.body.Invoice.Line; \"Amount\"; \"DetailType\"; \"SubTotalLineDetail\"))}},\"DetailType\":\"SubTotalLineDetail\",\"SubTotalLineDetail\":{}},"
+     },
+     {
+      "name": "ext_key",
+      "value": ",\"CustomExtensions\":[]"
      }
     ]
    },
@@ -288,6 +300,9 @@
      "expect": {
       "variables": {
        "items": [
+        null,
+        null,
+        null,
         null,
         null
        ]
@@ -332,6 +347,36 @@
    }
   },
   {
+   "id": 15,
+   "module": "util:SetVariables",
+   "version": 1,
+   "parameters": {},
+   "mapper": {
+    "variables": [
+     {
+      "name": "body",
+      "value": "{\"Id\":\"{{1.Id}}\",\"SyncToken\":\"{{12.body.Invoice.SyncToken}}\",\"sparse\":true,\"GlobalTaxCalculation\":\"TaxExcluded\",\"TxnTaxDetail\":{\"TxnTaxCodeRef\":{\"value\":\"7\"}},\"Line\":{{substring(replace(replace(replace(10.json; 9.subtotal_pre; \"\"); 9.subtotal_post; \"\"); 9.ext_key; \"\"); 0; length(replace(replace(replace(10.json; 9.subtotal_pre; \"\"); 9.subtotal_post; \"\"); 9.ext_key; \"\")) - 1)}},{\"DetailType\":\"SalesItemLineDetail\",\"Amount\":{{9.fee}},\"Description\":\"Frais de retard ({{9.new_days}} jours au {{formatDate(now; \"DD-MM-YYYY\")}})\",\"SalesItemLineDetail\":{\"ItemRef\":{\"value\":\"17\"},\"Qty\":1,\"UnitPrice\":{{9.fee}},\"ServiceDate\":\"{{formatDate(now; \"YYYY-MM-DD\")}}\",\"TaxCodeRef\":{\"value\":\"4\"}}}]}"
+     }
+    ]
+   },
+   "metadata": {
+    "designer": {
+     "x": 2400,
+     "y": 0,
+     "name": "Compose le corps (sans sous-total ni CustomExtensions)"
+    },
+    "restore": {
+     "expect": {
+      "variables": {
+       "items": [
+        null
+       ]
+      }
+     }
+    }
+   }
+  },
+  {
    "id": 11,
    "module": "quickbooks:MakeApiCall",
    "version": 2,
@@ -348,12 +393,12 @@
      }
     ],
     "qs": [],
-    "body": "{\"Id\":\"{{1.Id}}\",\"SyncToken\":\"{{12.body.Invoice.SyncToken}}\",\"sparse\":true,\"Line\":{{substring(10.json; 0; length(10.json) - 1)}},{\"DetailType\":\"SalesItemLineDetail\",\"Amount\":{{9.fee}},\"Description\":\"Frais de retard ({{9.new_days}} jours au {{formatDate(now; \"DD-MM-YYYY\")}})\",\"SalesItemLineDetail\":{\"ItemRef\":{\"value\":\"17\"},\"Qty\":1,\"UnitPrice\":{{9.fee}},\"ServiceDate\":\"{{formatDate(now; \"YYYY-MM-DD\")}}\",\"TaxCodeRef\":{\"value\":\"4\"}}}]}",
+    "body": "{{15.body}}",
     "version": "v3"
    },
    "metadata": {
     "designer": {
-     "x": 2400,
+     "x": 2700,
      "y": 0,
      "name": "POST facture (sparse) + ligne de frais"
     },
