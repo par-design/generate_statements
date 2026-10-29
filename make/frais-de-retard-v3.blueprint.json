@@ -97,12 +97,76 @@
    }
   },
   {
+   "id": 13,
+   "module": "builtin:BasicFeeder",
+   "version": 1,
+   "parameters": {},
+   "mapper": {
+    "array": "{{12.body.Invoice.Line}}"
+   },
+   "metadata": {
+    "designer": {
+     "x": 600,
+     "y": 0,
+     "name": "Itère les lignes"
+    },
+    "restore": {
+     "expect": {
+      "array": {
+       "mode": "edit"
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": 14,
+   "module": "builtin:BasicAggregator",
+   "version": 1,
+   "parameters": {
+    "feeder": 13
+   },
+   "filter": {
+    "name": "Lignes Frais de retard (17)",
+    "conditions": [
+     [
+      {
+       "a": "{{13.SalesItemLineDetail.ItemRef.value}}",
+       "b": "17",
+       "o": "text:equal"
+      }
+     ]
+    ]
+   },
+   "mapper": {
+    "amount": "{{13.Amount}}",
+    "service_date": "{{13.SalesItemLineDetail.ServiceDate}}",
+    "description": "{{13.Description}}"
+   },
+   "metadata": {
+    "designer": {
+     "x": 900,
+     "y": 0,
+     "name": "Agrège les lignes de frais"
+    },
+    "restore": {
+     "extra": {
+      "feeder": {
+       "label": "Itère les lignes [13]"
+      },
+      "target": {
+       "label": "Custom"
+      }
+     }
+    }
+   }
+  },
+  {
    "id": 7,
    "module": "util:SetVariables",
    "version": 1,
    "parameters": {},
    "mapper": {
-    "scope": "roundtrip",
     "variables": [
      {
       "name": "taux_annuel",
@@ -118,29 +182,26 @@
      },
      {
       "name": "previous_fees",
-      "value": "{{ifempty(sum(map(12.body.Invoice.Line; Amount; SalesItemLineDetail.ItemRef.value; 17)); 0)}}"
+      "value": "{{if(length(14.array) > 0; sum(map(14.array; \"amount\")); 0)}}"
      },
      {
       "name": "last_fee_date",
-      "value": "{{last(sort(map(12.body.Invoice.Line; SalesItemLineDetail.ServiceDate; SalesItemLineDetail.ItemRef.value; 17)))}}"
+      "value": "{{ifempty(last(sort(map(14.array; \"service_date\"))); \"\")}}"
      },
      {
       "name": "last_fee_description",
-      "value": "{{last(map(12.body.Invoice.Line; Description; SalesItemLineDetail.ItemRef.value; 17))}}"
+      "value": "{{ifempty(last(map(14.array; \"description\")); \"\")}}"
      }
     ]
    },
    "metadata": {
     "designer": {
-     "x": 600,
+     "x": 1200,
      "y": 0,
-     "name": "Jours, frais déjà facturés, paramètres"
+     "name": "Jours, frais déjà facturés"
     },
     "restore": {
      "expect": {
-      "scope": {
-       "label": "One cycle"
-      },
       "variables": {
        "items": [
         null,
@@ -161,11 +222,10 @@
    "version": 1,
    "parameters": {},
    "mapper": {
-    "scope": "roundtrip",
     "variables": [
      {
       "name": "days_already_charged",
-      "value": "{{if(length(7.last_fee_date) > 0; floor((parseDate(7.last_fee_date; \"YYYY-MM-DD\") - parseDate(12.body.Invoice.TxnDate; \"YYYY-MM-DD\")) / (1000 * 60 * 60 * 24)) - 10; if(contains(7.last_fee_description; \"jours\"); parseNumber(replace(7.last_fee_description; /.*?(\\d+)\\s*jours.*/; \"$1\")); 0))}}"
+      "value": "{{if(length(7.last_fee_date) > 0; floor((parseDate(7.last_fee_date; \"YYYY-MM-DD\") - parseDate(12.body.Invoice.TxnDate; \"YYYY-MM-DD\")) / (1000 * 60 * 60 * 24)) - 10; if(contains(7.last_fee_description; \"jours\"); parseNumber(trim(replace(replace(replace(replace(replace(7.last_fee_description; \"Frais de retard\"; \"\"); \"jours\"; \"\"); \"(\"; \"\"); \")\"; \"\"); \":\"; \"\"))); 0))}}"
      },
      {
       "name": "unpaid_fees",
@@ -183,15 +243,12 @@
    },
    "metadata": {
     "designer": {
-     "x": 900,
+     "x": 1500,
      "y": 0,
      "name": "Jours déjà facturés, frais impayés, base hors taxes (art. 1570 CCQ)"
     },
     "restore": {
      "expect": {
-      "scope": {
-       "label": "One cycle"
-      },
       "variables": {
        "items": [
         null,
@@ -210,7 +267,6 @@
    "version": 1,
    "parameters": {},
    "mapper": {
-    "scope": "roundtrip",
     "variables": [
      {
       "name": "new_days",
@@ -224,15 +280,12 @@
    },
    "metadata": {
     "designer": {
-     "x": 1200,
+     "x": 1800,
      "y": 0,
      "name": "Nouveaux jours et frais"
     },
     "restore": {
      "expect": {
-      "scope": {
-       "label": "One cycle"
-      },
       "variables": {
        "items": [
         null,
@@ -272,7 +325,7 @@
    },
    "metadata": {
     "designer": {
-     "x": 1500,
+     "x": 2100,
      "y": 0,
      "name": "Lignes brutes → JSON"
     }
@@ -300,7 +353,7 @@
    },
    "metadata": {
     "designer": {
-     "x": 1800,
+     "x": 2400,
      "y": 0,
      "name": "POST facture (sparse) + ligne de frais"
     },
