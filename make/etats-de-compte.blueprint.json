@@ -1,0 +1,2787 @@
+{
+ "flow": [
+  {
+   "id": 21,
+   "mapper": {
+    "url": "https://fraisesetframboisesduquebec.com/wp-json/ffq-qb/v1/member-numbers",
+    "method": "get",
+    "headers": [
+     {
+      "name": "X-FFQ-Key",
+      "value": "***REDACTED***"
+     }
+    ],
+    "shareCookies": false,
+    "parseResponse": true,
+    "allowRedirects": true,
+    "stopOnHttpError": true,
+    "requestCompressedContent": true
+   },
+   "module": "http:MakeRequest",
+   "version": 4,
+   "metadata": {
+    "expect": [
+     {
+      "name": "url",
+      "type": "url",
+      "label": "URL",
+      "required": true
+     },
+     {
+      "name": "method",
+      "type": "select",
+      "label": "Method",
+      "required": true,
+      "validate": {
+       "enum": [
+        "get",
+        "head",
+        "post",
+        "put",
+        "patch",
+        "delete",
+        "options"
+       ]
+      }
+     },
+     {
+      "name": "headers",
+      "spec": {
+       "name": "value",
+       "spec": [
+        {
+         "name": "name",
+         "type": "text",
+         "label": "Name",
+         "required": true,
+         "validate": {
+          "pattern": "^[-!#$%&'*+.^_`|~0-9A-Za-z]+$"
+         }
+        },
+        {
+         "name": "value",
+         "type": "text",
+         "label": "Value"
+        }
+       ],
+       "type": "collection",
+       "label": "Header"
+      },
+      "type": "array",
+      "label": "Headers"
+     },
+     {
+      "name": "queryParameters",
+      "spec": {
+       "name": "value",
+       "spec": [
+        {
+         "name": "name",
+         "type": "text",
+         "label": "Name",
+         "required": true
+        },
+        {
+         "name": "value",
+         "type": "text",
+         "label": "Value"
+        }
+       ],
+       "type": "collection",
+       "label": "Parameter"
+      },
+      "type": "array",
+      "label": "Query parameters"
+     },
+     {
+      "name": "contentType",
+      "type": "select",
+      "label": "Body content type",
+      "validate": {
+       "enum": [
+        "json",
+        "multipart",
+        "urlEncoded",
+        "custom"
+       ]
+      }
+     },
+     {
+      "name": "parseResponse",
+      "type": "boolean",
+      "label": "Parse response",
+      "required": true
+     },
+     {
+      "name": "stopOnHttpError",
+      "type": "boolean",
+      "label": "Return error if HTTP request fails",
+      "required": true
+     },
+     {
+      "name": "timeout",
+      "type": "uinteger",
+      "label": "Timeout",
+      "validate": {
+       "max": 300,
+       "min": 1
+      }
+     },
+     {
+      "name": "allowRedirects",
+      "type": "boolean",
+      "label": "Allow redirects",
+      "required": true
+     },
+     {
+      "name": "shareCookies",
+      "type": "boolean",
+      "label": "Share cookies with other HTTP modules",
+      "required": true
+     },
+     {
+      "name": "requestCompressedContent",
+      "type": "boolean",
+      "label": "Request compressed content",
+      "required": true
+     },
+     {
+      "name": "paginationType",
+      "type": "select",
+      "label": "Pagination type",
+      "validate": {
+       "enum": [
+        "offsetBased",
+        "pageBased",
+        "urlBased",
+        "tokenBased"
+       ]
+      }
+     }
+    ],
+    "restore": {
+     "expect": {
+      "method": {
+       "mode": "chose",
+       "label": "GET"
+      },
+      "headers": {
+       "mode": "chose",
+       "items": [
+        null
+       ]
+      },
+      "contentType": {
+       "label": "Empty"
+      },
+      "shareCookies": {
+       "mode": "chose"
+      },
+      "parseResponse": {
+       "mode": "chose"
+      },
+      "allowRedirects": {
+       "mode": "chose"
+      },
+      "paginationType": {
+       "label": "Empty"
+      },
+      "queryParameters": {
+       "mode": "chose"
+      },
+      "stopOnHttpError": {
+       "mode": "chose"
+      },
+      "requestCompressedContent": {
+       "mode": "chose"
+      }
+     },
+     "parameters": {
+      "tlsType": {
+       "label": "Empty"
+      },
+      "authenticationType": {
+       "label": "No authenticationUse when no credentials are required for the request."
+      }
+     }
+    },
+    "designer": {
+     "x": 0,
+     "y": 0
+    },
+    "interface": [
+     {
+      "name": "data",
+      "type": "any",
+      "label": "Data"
+     },
+     {
+      "name": "statusCode",
+      "type": "number",
+      "label": "Status Code"
+     },
+     {
+      "name": "headers",
+      "spec": [
+       {
+        "name": "content-length",
+        "type": "text",
+        "label": "Content-Length"
+       },
+       {
+        "name": "content-encoding",
+        "type": "text",
+        "label": "Content-Encoding"
+       },
+       {
+        "name": "content-type",
+        "type": "text",
+        "label": "Content-Type"
+       },
+       {
+        "name": "server",
+        "type": "text",
+        "label": "Server"
+       },
+       {
+        "name": "cache-control",
+        "type": "text",
+        "label": "Cache-Control"
+       },
+       {
+        "name": "set-cookie",
+        "spec": {
+         "type": "text"
+        },
+        "type": "array",
+        "label": "Set-Cookie"
+       }
+      ],
+      "type": "collection",
+      "label": "Headers"
+     }
+    ],
+    "parameters": [
+     {
+      "name": "authenticationType",
+      "type": "select",
+      "label": "Authentication type",
+      "required": true,
+      "validate": {
+       "enum": [
+        "noAuth",
+        "apiKey",
+        "basicAuth",
+        "oAuth"
+       ]
+      }
+     },
+     {
+      "name": "tlsType",
+      "type": "select",
+      "label": "Transport layer security (TLS)",
+      "validate": {
+       "enum": [
+        "mTls",
+        "tls"
+       ]
+      }
+     },
+     {
+      "name": "proxyKeychain",
+      "type": "keychain:proxy",
+      "label": "Proxy"
+     }
+    ]
+   },
+   "parameters": {
+    "tlsType": "",
+    "authenticationType": "noAuth"
+   }
+  },
+  {
+   "id": 22,
+   "mapper": {
+    "name": "{{formatDate(now; \"YYYY-MM-DD\")}}",
+    "folderId": "/1UtmdDQTBbsKCOEZvQeMTyDujlkKkQVXi/1Fb6rFXS5gnz31OkHiMAwsEFgIJazGaUJ/16x-TQ5Gb_-RaBKlfK7taNmWX6N_PvSRG",
+    "destination": "team",
+    "sharedDrive": "0AG65qikRQdZHUk9PVA",
+    "useDomainAdminAccess": false
+   },
+   "module": "google-drive:createAFolder",
+   "version": 4,
+   "metadata": {
+    "expect": [
+     {
+      "name": "destination",
+      "type": "select",
+      "label": "New Drive Location",
+      "required": true,
+      "validate": {
+       "enum": [
+        "drive",
+        "share",
+        "team"
+       ]
+      }
+     },
+     {
+      "name": "useDomainAdminAccess",
+      "type": "select",
+      "label": "Use Domain Admin Access",
+      "required": true,
+      "validate": {
+       "enum": [
+        true,
+        false
+       ]
+      }
+     },
+     {
+      "name": "name",
+      "type": "text",
+      "label": "New Folder's Name"
+     },
+     {
+      "name": "sharedDrive",
+      "type": "select",
+      "label": "Shared Drive",
+      "required": true
+     },
+     {
+      "name": "folderId",
+      "type": "folder",
+      "label": "New Folder Location"
+     }
+    ],
+    "restore": {
+     "expect": {
+      "folderId": {
+       "mode": "chose",
+       "path": [
+        "Clients",
+        "Fraises framboises",
+        "États de compte - Contribution"
+       ]
+      },
+      "destination": {
+       "label": "Google Shared Drive"
+      },
+      "sharedDrive": {
+       "mode": "chose",
+       "label": "PAR Design Drive"
+      },
+      "useDomainAdminAccess": {
+       "label": "No"
+      }
+     },
+     "parameters": {
+      "__IMTCONN__": {
+       "data": {
+        "scoped": "true",
+        "connection": "google-restricted"
+       },
+       "label": "My Google Restricted connection (ggaudreau@pardesign.net)"
+      }
+     }
+    },
+    "designer": {
+     "x": 300,
+     "y": 0
+    },
+    "parameters": [
+     {
+      "name": "__IMTCONN__",
+      "type": "account:google-restricted,google-drive",
+      "label": "Connection",
+      "required": true
+     }
+    ]
+   },
+   "parameters": {
+    "__IMTCONN__": 4271650
+   }
+  },
+  {
+   "id": 9,
+   "mapper": {
+    "type": "query",
+    "query": "SELECT * FROM Customer WHERE Balance > '0' STARTPOSITION 1 MAXRESULTS 1000"
+   },
+   "module": "quickbooks:SearchForCustomers",
+   "version": 2,
+   "metadata": {
+    "expect": [
+     {
+      "name": "type",
+      "type": "select",
+      "label": "Search by",
+      "required": true,
+      "validate": {
+       "enum": [
+        "field",
+        "query"
+       ]
+      }
+     },
+     {
+      "name": "query",
+      "type": "text",
+      "label": "Query",
+      "required": true
+     }
+    ],
+    "restore": {
+     "expect": {
+      "type": {
+       "mode": "chose",
+       "label": "user-defined query"
+      }
+     },
+     "parameters": {
+      "__IMTCONN__": {
+       "data": {
+        "scoped": "true",
+        "connection": "quickbooks"
+       },
+       "label": "My QuickBooks connection (Association des producteurs de fraises et framboises du Québec (CA))"
+      }
+     }
+    },
+    "designer": {
+     "x": 600,
+     "y": 0
+    },
+    "interface": [
+     {
+      "name": "__IMTLENGTH__",
+      "type": "uinteger",
+      "label": "Total number of bundles"
+     },
+     {
+      "name": "__IMTINDEX__",
+      "type": "uinteger",
+      "label": "Bundle order position"
+     },
+     {
+      "name": "Id",
+      "type": "number",
+      "label": "Customer ID"
+     },
+     {
+      "name": "PrimaryEmailAddr",
+      "spec": [
+       {
+        "name": "Address",
+        "type": "text",
+        "label": "Address"
+       }
+      ],
+      "type": "collection",
+      "label": "Primary email"
+     },
+     {
+      "name": "DisplayName",
+      "type": "text",
+      "label": "Display name"
+     },
+     {
+      "name": "CurrencyRef",
+      "spec": [
+       {
+        "name": "name",
+        "type": "text",
+        "label": "Name"
+       },
+       {
+        "name": "value",
+        "type": "text",
+        "label": "Value"
+       }
+      ],
+      "type": "collection",
+      "label": "Currency"
+     },
+     {
+      "name": "DefaultTaxCodeRef",
+      "spec": [
+       {
+        "name": "value",
+        "type": "text",
+        "label": "Value"
+       }
+      ],
+      "type": "collection",
+      "label": "Default tax code"
+     },
+     {
+      "name": "PreferredDeliveryMethod",
+      "type": "text",
+      "label": "Preferred delivery method"
+     },
+     {
+      "name": "GivenName",
+      "type": "text",
+      "label": "Given name"
+     },
+     {
+      "name": "FullyQualifiedName",
+      "type": "text",
+      "label": "Fully qualified name"
+     },
+     {
+      "name": "BillWithParent",
+      "type": "boolean",
+      "label": "Bill with parent"
+     },
+     {
+      "name": "Title",
+      "type": "text",
+      "label": "Title"
+     },
+     {
+      "name": "Job",
+      "type": "boolean",
+      "label": "Job"
+     },
+     {
+      "name": "BalanceWithJobs",
+      "type": "number",
+      "label": "Balance with jobs"
+     },
+     {
+      "name": "PrimaryPhone",
+      "spec": [
+       {
+        "name": "FreeFormNumber",
+        "type": "text",
+        "label": "Free form number"
+       }
+      ],
+      "type": "collection",
+      "label": "Primary phone"
+     },
+     {
+      "name": "Taxable",
+      "type": "boolean",
+      "label": "Taxable"
+     },
+     {
+      "name": "MetaData",
+      "spec": [
+       {
+        "name": "CreateTime",
+        "type": "text",
+        "label": "Create time"
+       },
+       {
+        "name": "LastUpdatedTime",
+        "type": "text",
+        "label": "Last updated time"
+       }
+      ],
+      "type": "collection",
+      "label": "Meta data"
+     },
+     {
+      "name": "BillAddr",
+      "spec": [
+       {
+        "name": "City",
+        "type": "text",
+        "label": "City"
+       },
+       {
+        "name": "Country",
+        "type": "text",
+        "label": "Country"
+       },
+       {
+        "name": "Line1",
+        "type": "text",
+        "label": "Line1"
+       },
+       {
+        "name": "Line2",
+        "type": "text",
+        "label": "Line2"
+       },
+       {
+        "name": "PostalCode",
+        "type": "text",
+        "label": "Postal code"
+       },
+       {
+        "name": "CountrySubDivisionCode",
+        "type": "text",
+        "label": "Country sub division code"
+       },
+       {
+        "name": "Id",
+        "type": "text",
+        "label": "Id"
+       }
+      ],
+      "type": "collection",
+      "label": "Bill addr"
+     },
+     {
+      "name": "MiddleName",
+      "type": "text",
+      "label": "Middle name"
+     },
+     {
+      "name": "Notes",
+      "type": "text",
+      "label": "Notes"
+     },
+     {
+      "name": "Active",
+      "type": "boolean",
+      "label": "Active"
+     },
+     {
+      "name": "Balance",
+      "type": "number",
+      "label": "Balance"
+     },
+     {
+      "name": "SyncToken",
+      "type": "text",
+      "label": "Sync token"
+     },
+     {
+      "name": "Suffix",
+      "type": "text",
+      "label": "Suffix"
+     },
+     {
+      "name": "CompanyName",
+      "type": "text",
+      "label": "Company name"
+     },
+     {
+      "name": "FamilyName",
+      "type": "text",
+      "label": "Family name"
+     },
+     {
+      "name": "PrintOnCheckName",
+      "type": "text",
+      "label": "Print on check name"
+     },
+     {
+      "name": "PrimaryTaxIdentifier",
+      "type": "text",
+      "label": "Tax Reg. No",
+      "advanced": true
+     },
+     {
+      "name": "SecondaryTaxIdentifier",
+      "type": "text",
+      "label": "Secondary tax identifier",
+      "advanced": true
+     }
+    ],
+    "parameters": [
+     {
+      "name": "__IMTCONN__",
+      "type": "account:quickbooks2,quickbooks",
+      "label": "Connection",
+      "required": true
+     }
+    ]
+   },
+   "parameters": {
+    "__IMTCONN__": 4556785
+   }
+  },
+  {
+   "id": 6,
+   "mapper": {
+    "array": "{{`9`}}"
+   },
+   "module": "builtin:BasicFeeder",
+   "version": 1,
+   "metadata": {
+    "expect": [
+     {
+      "mode": "edit",
+      "name": "array",
+      "spec": [],
+      "type": "array",
+      "label": "Array"
+     }
+    ],
+    "restore": {
+     "expect": {
+      "array": {
+       "mode": "edit"
+      }
+     }
+    },
+    "designer": {
+     "x": 900,
+     "y": 0
+    }
+   },
+   "parameters": {}
+  },
+  {
+   "id": 11,
+   "mapper": {
+    "type": "query",
+    "query": "SELECT Id, DocNumber, TxnDate, DueDate,\n  TotalAmt, Balance, TxnTaxDetail,\n  Line, CustomField, PrivateNote\nFROM Invoice\nWHERE CustomerRef = '{{9.Id}}'\n  AND Balance > '0'\nORDER BY TxnDate ASC\nSTARTPOSITION 1 MAXRESULTS 1000"
+   },
+   "module": "quickbooks:SearchForInvoices",
+   "version": 2,
+   "metadata": {
+    "expect": [
+     {
+      "name": "type",
+      "type": "select",
+      "label": "Search by",
+      "required": true,
+      "validate": {
+       "enum": [
+        "field",
+        "query"
+       ]
+      }
+     },
+     {
+      "name": "query",
+      "type": "text",
+      "label": "Query",
+      "required": true
+     }
+    ],
+    "restore": {
+     "expect": {
+      "type": {
+       "mode": "chose",
+       "label": "user-defined query"
+      }
+     },
+     "parameters": {
+      "__IMTCONN__": {
+       "data": {
+        "scoped": "true",
+        "connection": "quickbooks"
+       },
+       "label": "My QuickBooks connection (Association des producteurs de fraises et framboises du Québec (CA))"
+      }
+     }
+    },
+    "designer": {
+     "x": 1200,
+     "y": 0
+    },
+    "interface": [
+     {
+      "name": "__IMTLENGTH__",
+      "type": "uinteger",
+      "label": "Total number of bundles"
+     },
+     {
+      "name": "__IMTINDEX__",
+      "type": "uinteger",
+      "label": "Bundle order position"
+     },
+     {
+      "name": "Deposit",
+      "type": "number",
+      "label": "Deposit"
+     },
+     {
+      "name": "AllowIPNPayment",
+      "type": "boolean",
+      "label": "Allow IPNP payment"
+     },
+     {
+      "name": "AllowOnlinePayment",
+      "type": "boolean",
+      "label": "Allow online payment"
+     },
+     {
+      "name": "AllowOnlineCreditCardPayment",
+      "type": "boolean",
+      "label": "Allow online credit card payment"
+     },
+     {
+      "name": "AllowOnlineACHPayment",
+      "type": "boolean",
+      "label": "Allow online ACHP payment"
+     },
+     {
+      "name": "Id",
+      "type": "text",
+      "label": "Invoice ID"
+     },
+     {
+      "name": "SyncToken",
+      "type": "text",
+      "label": "Sync token"
+     },
+     {
+      "name": "MetaData",
+      "spec": [
+       {
+        "name": "CreateTime",
+        "type": "date",
+        "label": "Create time"
+       },
+       {
+        "name": "LastUpdatedTime",
+        "type": "date",
+        "label": "Last updated time"
+       }
+      ],
+      "type": "collection",
+      "label": "Meta data"
+     },
+     {
+      "name": "CustomField",
+      "spec": {
+       "spec": [
+        {
+         "name": "DefinitionId",
+         "type": "text",
+         "label": "Definition id"
+        },
+        {
+         "name": "Type",
+         "type": "text",
+         "label": "Type"
+        },
+        {
+         "name": "StringValue",
+         "type": "text",
+         "label": "String value"
+        }
+       ],
+       "type": "collection"
+      },
+      "type": "array",
+      "label": "Custom field"
+     },
+     {
+      "name": "DocNumber",
+      "type": "text",
+      "label": "Doc number"
+     },
+     {
+      "name": "TxnDate",
+      "type": "date",
+      "label": "Transaction date"
+     },
+     {
+      "name": "CurrencyRef",
+      "spec": [
+       {
+        "name": "value",
+        "type": "text",
+        "label": "Value"
+       },
+       {
+        "name": "name",
+        "type": "text",
+        "label": "Name"
+       }
+      ],
+      "type": "collection",
+      "label": "Currency"
+     },
+     {
+      "name": "PrivateNote",
+      "type": "text",
+      "label": "Private note"
+     },
+     {
+      "name": "LinkedTxn",
+      "spec": {
+       "spec": [
+        {
+         "name": "TxnId",
+         "type": "text",
+         "label": "Txn id"
+        },
+        {
+         "name": "TxnType",
+         "type": "text",
+         "label": "Txn type"
+        }
+       ],
+       "type": "collection"
+      },
+      "type": "array",
+      "label": "Linked txn"
+     },
+     {
+      "name": "Line",
+      "spec": {
+       "spec": [
+        {
+         "name": "Id",
+         "type": "text",
+         "label": "Id"
+        },
+        {
+         "name": "LineNum",
+         "type": "number",
+         "label": "Line num"
+        },
+        {
+         "name": "Description",
+         "type": "text",
+         "label": "Description"
+        },
+        {
+         "name": "Amount",
+         "type": "number",
+         "label": "Amount"
+        },
+        {
+         "name": "DetailType",
+         "type": "text",
+         "label": "Detail type"
+        },
+        {
+         "name": "SalesItemLineDetail",
+         "spec": [
+          {
+           "name": "ItemRef",
+           "spec": [
+            {
+             "name": "value",
+             "type": "text",
+             "label": "Value"
+            },
+            {
+             "name": "name",
+             "type": "text",
+             "label": "Name"
+            }
+           ],
+           "type": "collection",
+           "label": "Item"
+          },
+          {
+           "name": "UnitPrice",
+           "type": "number",
+           "label": "Unit price"
+          },
+          {
+           "name": "Qty",
+           "type": "number",
+           "label": "Quantity"
+          },
+          {
+           "name": "TaxCodeRef",
+           "spec": [
+            {
+             "name": "value",
+             "type": "text",
+             "label": "Value"
+            }
+           ],
+           "type": "collection",
+           "label": "Tax code ref"
+          }
+         ],
+         "type": "collection",
+         "label": "Sales item line detail"
+        }
+       ],
+       "type": "collection"
+      },
+      "type": "array",
+      "label": "Line"
+     },
+     {
+      "name": "CustomerRef",
+      "spec": [
+       {
+        "name": "value",
+        "type": "text",
+        "label": "Value"
+       },
+       {
+        "name": "name",
+        "type": "text",
+        "label": "Name"
+       }
+      ],
+      "type": "collection",
+      "label": "Customer"
+     },
+     {
+      "name": "CustomerMemo",
+      "spec": [
+       {
+        "name": "value",
+        "type": "text",
+        "label": "Value"
+       }
+      ],
+      "type": "collection",
+      "label": "Customer memo"
+     },
+     {
+      "name": "BillAddr",
+      "spec": [
+       {
+        "name": "Id",
+        "type": "text",
+        "label": "Id"
+       },
+       {
+        "name": "Line1",
+        "type": "text",
+        "label": "Line 1"
+       },
+       {
+        "name": "Line2",
+        "type": "text",
+        "label": "Line 2"
+       },
+       {
+        "name": "City",
+        "type": "text",
+        "label": "City"
+       },
+       {
+        "name": "Country",
+        "type": "text",
+        "label": "Country"
+       },
+       {
+        "name": "CountrySubDivisionCode",
+        "type": "text",
+        "label": "Country sub division code"
+       },
+       {
+        "name": "PostalCode",
+        "type": "text",
+        "label": "Postal code"
+       }
+      ],
+      "type": "collection",
+      "label": "Bill address"
+     },
+     {
+      "name": "ShipAddr",
+      "spec": [
+       {
+        "name": "Id",
+        "type": "text",
+        "label": "Id"
+       },
+       {
+        "name": "Line1",
+        "type": "text",
+        "label": "Line 1"
+       },
+       {
+        "name": "Line2",
+        "type": "text",
+        "label": "Line 2"
+       },
+       {
+        "name": "City",
+        "type": "text",
+        "label": "City"
+       },
+       {
+        "name": "Country",
+        "type": "text",
+        "label": "Country"
+       },
+       {
+        "name": "CountrySubDivisionCode",
+        "type": "text",
+        "label": "Country sub division code"
+       },
+       {
+        "name": "PostalCode",
+        "type": "text",
+        "label": "Postal code"
+       }
+      ],
+      "type": "collection",
+      "label": "Ship address"
+     },
+     {
+      "name": "SalesTermRef",
+      "spec": [
+       {
+        "name": "value",
+        "type": "text",
+        "label": "Value"
+       }
+      ],
+      "type": "collection",
+      "label": "Sales term"
+     },
+     {
+      "name": "DueDate",
+      "type": "date",
+      "label": "Due date"
+     },
+     {
+      "name": "ShipMethodRef",
+      "spec": [
+       {
+        "name": "value",
+        "type": "text",
+        "label": "Value"
+       },
+       {
+        "name": "name",
+        "type": "text",
+        "label": "Name"
+       }
+      ],
+      "type": "collection",
+      "label": "Ship method"
+     },
+     {
+      "name": "ShipDate",
+      "type": "date",
+      "label": "Ship date"
+     },
+     {
+      "name": "TrackingNum",
+      "type": "text",
+      "label": "Tracking num"
+     },
+     {
+      "name": "TotalAmt",
+      "type": "number",
+      "label": "Total amount"
+     },
+     {
+      "name": "PrintStatus",
+      "type": "text",
+      "label": "Print status"
+     },
+     {
+      "name": "EmailStatus",
+      "type": "text",
+      "label": "Email status"
+     },
+     {
+      "name": "BillEmail",
+      "spec": [
+       {
+        "name": "Address",
+        "type": "text",
+        "label": "Address"
+       }
+      ],
+      "type": "collection",
+      "label": "Bill email"
+     },
+     {
+      "name": "Balance",
+      "type": "number",
+      "label": "Balance"
+     },
+     {
+      "name": "GlobalTaxCalculation",
+      "type": "select",
+      "label": "Global tax calculation",
+      "advanced": true
+     }
+    ],
+    "parameters": [
+     {
+      "name": "__IMTCONN__",
+      "type": "account:quickbooks2,quickbooks",
+      "label": "Connection",
+      "required": true
+     }
+    ]
+   },
+   "parameters": {
+    "__IMTCONN__": 4556785
+   }
+  },
+  {
+   "id": 15,
+   "flags": {
+    "groupBy": "{{9.Id}}"
+   },
+   "mapper": {
+    "Id": "{{9.Id}}",
+    "Job": "{{9.Job}}",
+    "Line": "{{11.Line}}",
+    "Notes": "{{9.Notes}}",
+    "Title": "{{9.Title}}",
+    "Active": "{{9.Active}}",
+    "Mobile": "{{9.Mobile}}",
+    "Suffix": "{{9.Suffix}}",
+    "domain": "{{9.domain}}",
+    "sparse": "{{9.sparse}}",
+    "Balance": "{{9.Balance}}",
+    "Deposit": "{{11.Deposit}}",
+    "DueDate": "{{11.DueDate}}",
+    "Taxable": "{{9.Taxable}}",
+    "TxnDate": "{{11.TxnDate}}",
+    "BillAddr": "{{9.BillAddr}}",
+    "MetaData": "{{9.MetaData}}",
+    "ShipAddr": "{{9.ShipAddr}}",
+    "ShipDate": "{{11.ShipDate}}",
+    "TotalAmt": "{{11.TotalAmt}}",
+    "BillEmail": "{{11.BillEmail}}",
+    "DocNumber": "{{11.DocNumber}}",
+    "GivenName": "{{9.GivenName}}",
+    "IsProject": "{{9.IsProject}}",
+    "LinkedTxn": "{{11.LinkedTxn}}",
+    "SyncToken": "{{9.SyncToken}}",
+    "FamilyName": "{{9.FamilyName}}",
+    "MiddleName": "{{9.MiddleName}}",
+    "CompanyName": "{{9.CompanyName}}",
+    "CurrencyRef": "{{9.CurrencyRef}}",
+    "CustomField": "{{11.CustomField}}",
+    "CustomerRef": "{{11.CustomerRef}}",
+    "DisplayName": "{{9.DisplayName}}",
+    "EmailStatus": "{{11.EmailStatus}}",
+    "PrintStatus": "{{11.PrintStatus}}",
+    "PrivateNote": "{{11.PrivateNote}}",
+    "TrackingNum": "{{11.TrackingNum}}",
+    "CustomerMemo": "{{11.CustomerMemo}}",
+    "PrimaryPhone": "{{9.PrimaryPhone}}",
+    "SalesTermRef": "{{9.SalesTermRef}}",
+    "TxnTaxDetail": "{{11.TxnTaxDetail}}",
+    "__IMTINDEX__": "{{9.`__IMTINDEX__`}}",
+    "ShipMethodRef": "{{11.ShipMethodRef}}",
+    "V4IDPseudonym": "{{9.V4IDPseudonym}}",
+    "__IMTLENGTH__": "{{9.`__IMTLENGTH__`}}",
+    "BillWithParent": "{{9.BillWithParent}}",
+    "ClientEntityId": "{{9.ClientEntityId}}",
+    "AllowIPNPayment": "{{11.AllowIPNPayment}}",
+    "BalanceWithJobs": "{{9.BalanceWithJobs}}",
+    "CustomerTypeRef": "{{9.CustomerTypeRef}}",
+    "PrimaryEmailAddr": "{{9.PrimaryEmailAddr}}",
+    "PrintOnCheckName": "{{9.PrintOnCheckName}}",
+    "DefaultTaxCodeRef": "{{9.DefaultTaxCodeRef}}",
+    "AllowOnlinePayment": "{{11.AllowOnlinePayment}}",
+    "FullyQualifiedName": "{{9.FullyQualifiedName}}",
+    "GlobalTaxCalculation": "{{11.GlobalTaxCalculation}}",
+    "PrimaryTaxIdentifier": "{{9.PrimaryTaxIdentifier}}",
+    "AllowOnlineACHPayment": "{{11.AllowOnlineACHPayment}}",
+    "SecondaryTaxIdentifier": "{{9.SecondaryTaxIdentifier}}",
+    "PreferredDeliveryMethod": "{{9.PreferredDeliveryMethod}}",
+    "AllowOnlineCreditCardPayment": "{{11.AllowOnlineCreditCardPayment}}"
+   },
+   "module": "builtin:BasicAggregator",
+   "version": 1,
+   "metadata": {
+    "restore": {
+     "extra": {
+      "feeder": {
+       "label": "QuickBooks - Search for Invoices [11]"
+      },
+      "target": {
+       "label": "Custom"
+      }
+     }
+    },
+    "advanced": true,
+    "designer": {
+     "x": 1500,
+     "y": 0
+    }
+   },
+   "parameters": {
+    "feeder": 11
+   }
+  },
+  {
+   "id": 13,
+   "mapper": {
+    "url": "https://generate-statement-6cakq.ondigitalocean.app/generate-statement-raw",
+    "method": "post",
+    "contentType": "json",
+    "inputMethod": "dataStructure",
+    "shareCookies": false,
+    "parseResponse": true,
+    "allowRedirects": true,
+    "stopOnHttpError": true,
+    "bodyDataStructure": 270500,
+    "dataStructureBodyContent": {
+     "company_tps": "987654321 RT0001",
+     "company_tvq": "9876543210 TQ0001",
+     "company_name": "Association des producteurs de fraises et framboises du Québec",
+     "raw_invoices": "{{15.array}}",
+     "company_email": "apffq@upa.qc.ca",
+     "company_phone": "450 679-0540 poste 8792",
+     "customer_name": "{{9.DisplayName}}",
+     "company_address": "555 Bd Roland-Therrien, Longueuil, QC J4J 5J1",
+     "customer_address": "{{9.ShipAddr.Line1}} {{9.ShipAddr.City}}, {{9.ShipAddr.CountrySubDivisionCode}}, {{9.ShipAddr.PostalCode}}",
+     "frais_retard_item_id": "17",
+     "customer_member_number": "{{get(21.data.map; 9.Id)}}",
+     "customer_member_number_source": "wp"
+    },
+    "requestCompressedContent": true
+   },
+   "module": "http:MakeRequest",
+   "version": 4,
+   "metadata": {
+    "expect": [
+     {
+      "name": "url",
+      "type": "url",
+      "label": "URL",
+      "required": true
+     },
+     {
+      "name": "method",
+      "type": "select",
+      "label": "Method",
+      "required": true,
+      "validate": {
+       "enum": [
+        "get",
+        "head",
+        "post",
+        "put",
+        "patch",
+        "delete",
+        "options"
+       ]
+      }
+     },
+     {
+      "name": "headers",
+      "spec": {
+       "name": "value",
+       "spec": [
+        {
+         "name": "name",
+         "type": "text",
+         "label": "Name",
+         "required": true,
+         "validate": {
+          "pattern": "^[-!#$%&'*+.^_`|~0-9A-Za-z]+$"
+         }
+        },
+        {
+         "name": "value",
+         "type": "text",
+         "label": "Value"
+        }
+       ],
+       "type": "collection",
+       "label": "Header"
+      },
+      "type": "array",
+      "label": "Headers"
+     },
+     {
+      "name": "queryParameters",
+      "spec": {
+       "name": "value",
+       "spec": [
+        {
+         "name": "name",
+         "type": "text",
+         "label": "Name",
+         "required": true
+        },
+        {
+         "name": "value",
+         "type": "text",
+         "label": "Value"
+        }
+       ],
+       "type": "collection",
+       "label": "Parameter"
+      },
+      "type": "array",
+      "label": "Query parameters"
+     },
+     {
+      "name": "contentType",
+      "type": "select",
+      "label": "Body content type",
+      "validate": {
+       "enum": [
+        "json",
+        "multipart",
+        "urlEncoded",
+        "custom"
+       ]
+      }
+     },
+     {
+      "name": "parseResponse",
+      "type": "boolean",
+      "label": "Parse response",
+      "required": true
+     },
+     {
+      "name": "stopOnHttpError",
+      "type": "boolean",
+      "label": "Return error if HTTP request fails",
+      "required": true
+     },
+     {
+      "name": "timeout",
+      "type": "uinteger",
+      "label": "Timeout",
+      "validate": {
+       "max": 300,
+       "min": 1
+      }
+     },
+     {
+      "name": "allowRedirects",
+      "type": "boolean",
+      "label": "Allow redirects",
+      "required": true
+     },
+     {
+      "name": "shareCookies",
+      "type": "boolean",
+      "label": "Share cookies with other HTTP modules",
+      "required": true
+     },
+     {
+      "name": "requestCompressedContent",
+      "type": "boolean",
+      "label": "Request compressed content",
+      "required": true
+     },
+     {
+      "name": "inputMethod",
+      "type": "select",
+      "label": "Body input method",
+      "required": true,
+      "validate": {
+       "enum": [
+        "dataStructure",
+        "jsonString"
+       ]
+      }
+     },
+     {
+      "name": "bodyDataStructure",
+      "type": "udt",
+      "label": "Body structure",
+      "required": true
+     },
+     {
+      "name": "dataStructureBodyContent",
+      "spec": [
+       {
+        "name": "company_name",
+        "type": "text",
+        "label": null
+       },
+       {
+        "name": "company_address",
+        "type": "text",
+        "label": null
+       },
+       {
+        "name": "company_phone",
+        "type": "text",
+        "label": null
+       },
+       {
+        "name": "company_email",
+        "type": "text",
+        "label": null
+       },
+       {
+        "name": "company_tps",
+        "type": "text",
+        "label": null
+       },
+       {
+        "name": "company_tvq",
+        "type": "text",
+        "label": null
+       },
+       {
+        "name": "customer_name",
+        "type": "text",
+        "label": null
+       },
+       {
+        "name": "customer_address",
+        "type": "text",
+        "label": null
+       },
+       {
+        "name": "customer_member_number",
+        "type": "text",
+        "label": null
+       },
+       {
+        "name": "frais_retard_item_id",
+        "type": "text",
+        "label": null
+       },
+       {
+        "name": "raw_invoices",
+        "spec": {
+         "name": "value",
+         "type": "text"
+        },
+        "type": "array",
+        "label": null
+       },
+       {
+        "name": "customer_member_number_source",
+        "type": "text",
+        "label": null
+       }
+      ],
+      "type": "collection",
+      "label": "Body content"
+     },
+     {
+      "name": "paginationType",
+      "type": "select",
+      "label": "Pagination type",
+      "validate": {
+       "enum": [
+        "offsetBased",
+        "pageBased",
+        "urlBased",
+        "tokenBased"
+       ]
+      }
+     }
+    ],
+    "restore": {
+     "expect": {
+      "method": {
+       "mode": "chose",
+       "label": "POST"
+      },
+      "headers": {
+       "mode": "chose"
+      },
+      "contentType": {
+       "label": "application/jsonEnter data in the JSON format, as a string or using a data structure."
+      },
+      "inputMethod": {
+       "label": "Data structureDefine the JSON body with a data structure to map or enter values for each key. JSON reserved characters are escaped automatically."
+      },
+      "shareCookies": {
+       "mode": "chose"
+      },
+      "parseResponse": {
+       "mode": "chose"
+      },
+      "allowRedirects": {
+       "mode": "chose"
+      },
+      "paginationType": {
+       "label": "Empty"
+      },
+      "queryParameters": {
+       "mode": "chose"
+      },
+      "stopOnHttpError": {
+       "mode": "chose"
+      },
+      "bodyDataStructure": {
+       "label": "Fraise statement"
+      },
+      "dataStructureBodyContent": {
+       "nested": {
+        "raw_invoices": {
+         "mode": "edit"
+        }
+       }
+      },
+      "requestCompressedContent": {
+       "mode": "chose"
+      }
+     },
+     "parameters": {
+      "tlsType": {
+       "label": "Empty"
+      },
+      "authenticationType": {
+       "label": "No authenticationUse when no credentials are required for the request."
+      }
+     }
+    },
+    "advanced": true,
+    "designer": {
+     "x": 1800,
+     "y": 0
+    },
+    "interface": [
+     {
+      "name": "data",
+      "type": "any",
+      "label": "Data"
+     },
+     {
+      "name": "statusCode",
+      "type": "number",
+      "label": "Status Code"
+     },
+     {
+      "name": "headers",
+      "spec": [
+       {
+        "name": "content-length",
+        "type": "text",
+        "label": "Content-Length"
+       },
+       {
+        "name": "content-encoding",
+        "type": "text",
+        "label": "Content-Encoding"
+       },
+       {
+        "name": "content-type",
+        "type": "text",
+        "label": "Content-Type"
+       },
+       {
+        "name": "server",
+        "type": "text",
+        "label": "Server"
+       },
+       {
+        "name": "cache-control",
+        "type": "text",
+        "label": "Cache-Control"
+       },
+       {
+        "name": "set-cookie",
+        "spec": {
+         "type": "text"
+        },
+        "type": "array",
+        "label": "Set-Cookie"
+       }
+      ],
+      "type": "collection",
+      "label": "Headers"
+     }
+    ],
+    "parameters": [
+     {
+      "name": "authenticationType",
+      "type": "select",
+      "label": "Authentication type",
+      "required": true,
+      "validate": {
+       "enum": [
+        "noAuth",
+        "apiKey",
+        "basicAuth",
+        "oAuth"
+       ]
+      }
+     },
+     {
+      "name": "tlsType",
+      "type": "select",
+      "label": "Transport layer security (TLS)",
+      "validate": {
+       "enum": [
+        "mTls",
+        "tls"
+       ]
+      }
+     },
+     {
+      "name": "proxyKeychain",
+      "type": "keychain:proxy",
+      "label": "Proxy"
+     }
+    ]
+   },
+   "parameters": {
+    "tlsType": "",
+    "authenticationType": "noAuth"
+   }
+  },
+  {
+   "id": 14,
+   "filter": {
+    "name": "Only PDF",
+    "conditions": [
+     [
+      {
+       "a": "{{13.headers.`content-type`}}",
+       "b": "pdf",
+       "o": "text:contain"
+      }
+     ]
+    ]
+   },
+   "mapper": {
+    "data": "{{13.data}}",
+    "select": "map",
+    "convert": false,
+    "filename": "{{9.CompanyName}}.pdf",
+    "folderId": "{{22.id}}"
+   },
+   "module": "google-drive:uploadAFile",
+   "version": 4,
+   "metadata": {
+    "expect": [
+     {
+      "name": "select",
+      "type": "select",
+      "label": "Enter a Folder ID",
+      "required": true,
+      "validate": {
+       "enum": [
+        "map",
+        "value"
+       ]
+      }
+     },
+     {
+      "name": "title",
+      "type": "text",
+      "label": "New File Name"
+     },
+     {
+      "name": "filename",
+      "type": "text",
+      "label": "File Name",
+      "required": true
+     },
+     {
+      "name": "data",
+      "type": "buffer",
+      "label": "Data",
+      "required": true
+     },
+     {
+      "name": "convert",
+      "type": "boolean",
+      "label": "Convert a File",
+      "required": true
+     },
+     {
+      "name": "folderId",
+      "type": "text",
+      "label": "Folder ID",
+      "required": true
+     }
+    ],
+    "restore": {
+     "expect": {
+      "select": {
+       "label": "Enter manually"
+      }
+     },
+     "parameters": {
+      "__IMTCONN__": {
+       "data": {
+        "scoped": "true",
+        "connection": "google-restricted"
+       },
+       "label": "My Google Restricted connection (ggaudreau@pardesign.net)"
+      }
+     }
+    },
+    "designer": {
+     "x": 2100,
+     "y": 0
+    },
+    "parameters": [
+     {
+      "name": "__IMTCONN__",
+      "type": "account:google-restricted,google-drive",
+      "label": "Connection",
+      "required": true
+     }
+    ]
+   },
+   "parameters": {
+    "__IMTCONN__": 4271650
+   }
+  }
+ ],
+ "name": "QB - États de compte",
+ "metadata": {
+  "instant": false,
+  "version": 1,
+  "designer": {
+   "orphans": [],
+   "samples": {
+    "6": {
+     "Id": "543",
+     "Job": false,
+     "Active": true,
+     "Mobile": {
+      "FreeFormNumber": "418-349-5041"
+     },
+     "domain": "QBO",
+     "sparse": false,
+     "Balance": 2808.88,
+     "Taxable": false,
+     "BillAddr": {
+      "Id": "5",
+      "City": "Métabetchouan-Lac-à-la-Croix",
+      "Line1": "1488 Route 169",
+      "PostalCode": "G8G 1A5",
+      "CountrySubDivisionCode": "QC"
+     },
+     "MetaData": {
+      "CreateTime": "2025-05-30T16:59:22.000Z",
+      "LastUpdatedTime": "2026-09-01T04:10:18.000Z"
+     },
+     "ShipAddr": {
+      "Id": "8",
+      "City": "Métabetchouan-Lac-à-la-Croix",
+      "Line1": "1488 Route 169",
+      "PostalCode": "G8G 1A5",
+      "CountrySubDivisionCode": "QC"
+     },
+     "GivenName": "Manon",
+     "IsProject": false,
+     "SyncToken": "2",
+     "FamilyName": "et Marcel Côté",
+     "MiddleName": "Ferland",
+     "CompanyName": "9021-1095 Québec inc.",
+     "CurrencyRef": {
+      "name": "Dollar canadien",
+      "value": "CAD"
+     },
+     "DisplayName": "9021-1095 Québec inc.",
+     "PrimaryPhone": {
+      "FreeFormNumber": "418-349-2308"
+     },
+     "__IMTINDEX__": 1,
+     "V4IDPseudonym": "002093da742f3aa04f4963b9c27fe7f8977e4e",
+     "__IMTLENGTH__": 1,
+     "BillWithParent": false,
+     "BalanceWithJobs": 2808.88,
+     "PrimaryEmailAddr": {
+      "Address": "info@fraisesobec.com , manonetmarcel@hotmail.com"
+     },
+     "PrintOnCheckName": "9021-1095 Québec inc.",
+     "FullyQualifiedName": "9021-1095 Québec inc.",
+     "PreferredDeliveryMethod": "None"
+    },
+    "9": {
+     "Id": "543",
+     "Job": false,
+     "Active": true,
+     "Mobile": {
+      "FreeFormNumber": "418-349-5041"
+     },
+     "domain": "QBO",
+     "sparse": false,
+     "Balance": 2808.88,
+     "Taxable": false,
+     "BillAddr": {
+      "Id": "5",
+      "City": "Métabetchouan-Lac-à-la-Croix",
+      "Line1": "1488 Route 169",
+      "PostalCode": "G8G 1A5",
+      "CountrySubDivisionCode": "QC"
+     },
+     "MetaData": {
+      "CreateTime": "2025-05-30T16:59:22.000Z",
+      "LastUpdatedTime": "2026-09-01T04:10:18.000Z"
+     },
+     "ShipAddr": {
+      "Id": "8",
+      "City": "Métabetchouan-Lac-à-la-Croix",
+      "Line1": "1488 Route 169",
+      "PostalCode": "G8G 1A5",
+      "CountrySubDivisionCode": "QC"
+     },
+     "GivenName": "Manon",
+     "IsProject": false,
+     "SyncToken": "2",
+     "FamilyName": "et Marcel Côté",
+     "MiddleName": "Ferland",
+     "CompanyName": "9021-1095 Québec inc.",
+     "CurrencyRef": {
+      "name": "Dollar canadien",
+      "value": "CAD"
+     },
+     "DisplayName": "9021-1095 Québec inc.",
+     "PrimaryPhone": {
+      "FreeFormNumber": "418-349-2308"
+     },
+     "__IMTINDEX__": 1,
+     "V4IDPseudonym": "002093da742f3aa04f4963b9c27fe7f8977e4e",
+     "__IMTLENGTH__": 86,
+     "AlternatePhone": null,
+     "BillWithParent": false,
+     "BalanceWithJobs": 2808.88,
+     "PrimaryEmailAddr": {
+      "Address": "info@fraisesobec.com , manonetmarcel@hotmail.com"
+     },
+     "PrintOnCheckName": "9021-1095 Québec inc.",
+     "FullyQualifiedName": "9021-1095 Québec inc.",
+     "PreferredDeliveryMethod": "None"
+    },
+    "11": {
+     "Id": "705",
+     "Line": [
+      {
+       "Id": "22",
+       "Amount": 176.19,
+       "LineNum": 2,
+       "DetailType": "SubTotalLineDetail",
+       "Description": "Nombre de jours de frais de retard: 1010",
+       "SubTotalLineDetail": {},
+       "SalesItemLineDetail": {
+        "Qty": 1,
+        "ItemRef": {
+         "name": "Frais de retard",
+         "value": "17"
+        },
+        "UnitPrice": 28.5899178,
+        "TaxCodeRef": {
+         "value": "4"
+        },
+        "ItemAccountRef": {
+         "name": "Late Fee Income",
+         "value": "68"
+        }
+       }
+      }
+     ],
+     "sparse": true,
+     "Balance": 198.29,
+     "DueDate": "2023-11-15T05:00:00.000Z",
+     "TxnDate": "2023-11-15T05:00:00.000Z",
+     "BillAddr": {
+      "Id": "1646"
+     },
+     "TotalAmt": 198.29,
+     "DocNumber": "2023000336",
+     "LinkedTxn": [],
+     "CustomField": [],
+     "TxnTaxDetail": {
+      "TotalTax": 22.1
+     },
+     "__IMTINDEX__": 1,
+     "__IMTLENGTH__": 6,
+     "AllowOnlineAffirmPayment": false
+    },
+    "13": {
+     "data": "IMTBuffer(69927, binary, 880eec46fec0f0a1bca018941ec42ec2a7759648): 255044462d312e340a25938c8b9e2052...",
+     "headers": {
+      "date": "Mon, 14 Sep 2026 14:15:08 GMT",
+      "cf-ray": "a3b0008289136cf9-IAD",
+      "server": "cloudflare",
+      "alt-svc": "h3=\":443\"; ma=86400",
+      "connection": "keep-alive",
+      "set-cookie": [
+       "__cf_bm=k3XZWItTfAWssbyirwUzcDC1DpI7XOIiu9Cn3DaNoFo-1789395307.928149-1.0.1.1-l6T0UqGLEmKiEyFckhXmJQ..."
+      ],
+      "content-type": "application/pdf",
+      "cache-control": "no-cache",
+      "content-length": "69927",
+      "cf-cache-status": "DYNAMIC",
+      "x-do-app-origin": "54e05cbf-f93a-4628-8618-cf183b686e73",
+      "x-do-orig-status": "200",
+      "content-disposition": "attachment; filename=releve_9021-1095_Quebec_inc._20260914.pdf; filename*=UTF-8''releve_9021-1095_Qu..."
+     },
+     "statusCode": 200
+    },
+    "14": {
+     "id": "1PQo2RgyCB7QpaOXhjMMQi-YorSzmNfdW",
+     "kind": "drive#file",
+     "name": "9021-1095 Québec inc..pdf",
+     "size": "69927",
+     "spaces": [
+      "drive"
+     ],
+     "driveId": "0AG65qikRQdZHUk9PVA",
+     "parents": [
+      "1b4qBCqPipSsKY-ioc1jRN11UYSVrDJqu"
+     ],
+     "starred": false,
+     "trashed": false,
+     "version": "3",
+     "iconLink": "https://drive-thirdparty.googleusercontent.com/16/type/application/pdf",
+     "mimeType": "application/pdf",
+     "viewedByMe": false,
+     "createdTime": "2026-09-14T14:15:08.170Z",
+     "md5Checksum": "0be669d90e3b2580e320c67b92918d25",
+     "teamDriveId": "0AG65qikRQdZHUk9PVA",
+     "webViewLink": "https://drive.google.com/file/d/1PQo2RgyCB7QpaOXhjMMQi-YorSzmNfdW/view?usp=drivesdk",
+     "capabilities": {
+      "canCopy": true,
+      "canEdit": true,
+      "canShare": true,
+      "canTrash": true,
+      "canDelete": true,
+      "canRename": true,
+      "canComment": true,
+      "canUntrash": true,
+      "canDownload": true,
+      "canReadDrive": true,
+      "canReadLabels": false,
+      "canAddChildren": false,
+      "canListChildren": false,
+      "canModifyLabels": false,
+      "canModifyContent": true,
+      "canReadRevisions": true,
+      "canReadTeamDrive": true,
+      "canStartApproval": true,
+      "canTrashChildren": false,
+      "canAccessViaGenAi": true,
+      "canDeleteChildren": false,
+      "canRemoveChildren": false,
+      "canMoveTeamDriveItem": true,
+      "canMoveItemOutOfDrive": true,
+      "canMoveItemWithinDrive": true,
+      "canMoveItemIntoTeamDrive": true,
+      "canMoveChildrenOutOfDrive": false,
+      "canMoveItemOutOfTeamDrive": true,
+      "canMoveChildrenWithinDrive": false,
+      "canMoveItemWithinTeamDrive": true,
+      "canModifyContentRestriction": true,
+      "canRemoveContentRestriction": false,
+      "canAddFolderFromAnotherDrive": false,
+      "canEnableInheritedPermissions": true,
+      "canMoveChildrenOutOfTeamDrive": false,
+      "canChangeSecurityUpdateEnabled": false,
+      "canChangeViewersCanCopyContent": true,
+      "canDisableInheritedPermissions": false,
+      "canMoveChildrenWithinTeamDrive": false,
+      "canChangeItemDownloadRestriction": true,
+      "canModifyOwnerContentRestriction": true,
+      "canModifyEditorContentRestriction": true,
+      "canChangeCopyRequiresWriterPermission": true
+     },
+     "hasThumbnail": false,
+     "modifiedByMe": true,
+     "modifiedTime": "2026-09-14T14:15:09.720Z",
+     "sha1Checksum": "880eec46fec0f0a1bca018941ec42ec2a7759648",
+     "fileExtension": "pdf",
+     "permissionIds": [
+      "07758288680176402471"
+     ],
+     "headRevisionId": "0BwjqRTI09N4jSlpSdGNwb08zbEZjeWNCRGlka3kxaUJuMUJNPQ",
+     "quotaBytesUsed": "69927",
+     "sha256Checksum": "625b89a4d59535616937342924c8a22c997b89064f943aede8f800069561ba08",
+     "webContentLink": "https://drive.google.com/uc?id=1PQo2RgyCB7QpaOXhjMMQi-YorSzmNfdW&export=download",
+     "isAppAuthorized": true,
+     "modifiedByMeTime": "2026-09-14T14:15:09.720Z",
+     "originalFilename": "9021-1095 Québec inc..pdf",
+     "thumbnailVersion": "0",
+     "explicitlyTrashed": false,
+     "fullFileExtension": "pdf",
+     "lastModifyingUser": {
+      "me": true,
+      "kind": "drive#user",
+      "photoLink": "https://lh3.googleusercontent.com/a/ACg8ocIZNgLRNbjz64p6O5vddJB1S8Iv8szRR9N3nuG3fci8RUtMypo2aQ=s64",
+      "displayName": "Gabriel Gaudreau",
+      "emailAddress": "ggaudreau@pardesign.net",
+      "permissionId": "06985810988225161587"
+     },
+     "linkShareMetadata": {
+      "securityUpdateEnabled": true,
+      "securityUpdateEligible": false
+     },
+     "downloadRestrictions": {
+      "itemDownloadRestriction": {
+       "restrictedForReaders": false,
+       "restrictedForWriters": false
+      },
+      "effectiveDownloadRestrictionWithContext": {
+       "restrictedForReaders": false,
+       "restrictedForWriters": false
+      }
+     },
+     "viewersCanCopyContent": true,
+     "clientEncryptionDetails": {
+      "decryptionMetadata": {
+       "kaclsId": "0",
+       "keyFormat": "unsetKeyFormat",
+       "wrappedKey": "",
+       "aes256GcmChunkSize": "unset",
+       "encryptionResourceKeyHash": ""
+      }
+     },
+     "hasAugmentedPermissions": false,
+     "copyRequiresWriterPermission": false,
+     "inheritedPermissionsDisabled": false
+    },
+    "15": {
+     "array": [
+      {
+       "Id": "543",
+       "Job": null,
+       "Line": [
+        {
+         "Id": "5",
+         "Amount": 577.21,
+         "LineNum": 2,
+         "DetailType": "SubTotalLineDetail",
+         "Description": "Nombre de jours de frais de retard: 99",
+         "SubTotalLineDetail": {},
+         "SalesItemLineDetail": {
+          "Qty": 1,
+          "ItemRef": {
+           "name": "Frais de retard",
+           "value": "17"
+          },
+          "UnitPrice": 10.7549803,
+          "TaxCodeRef": {
+           "value": "4"
+          },
+          "ItemAccountRef": {
+           "name": "Late Fee Income",
+           "value": "68"
+          }
+         }
+        }
+       ],
+       "Notes": null,
+       "Title": null,
+       "Active": true,
+       "Mobile": {
+        "FreeFormNumber": "418-349-5041"
+       },
+       "Suffix": null,
+       "domain": "QBO",
+       "sparse": null,
+       "Balance": 2808.88,
+       "Deposit": null,
+       "DueDate": "2026-05-15T04:00:00.000Z",
+       "Taxable": null,
+       "TxnDate": "2026-05-15T04:00:00.000Z",
+       "BillAddr": {
+        "Id": "5",
+        "City": "Métabetchouan-Lac-à-la-Croix",
+        "Line1": "1488 Route 169",
+        "PostalCode": "G8G 1A5",
+        "CountrySubDivisionCode": "QC"
+       },
+       "MetaData": {
+        "CreateTime": "2025-05-30T16:59:22.000Z",
+        "LastUpdatedTime": "2026-09-01T04:10:18.000Z"
+       },
+       "ShipAddr": {
+        "Id": "8",
+        "City": "Métabetchouan-Lac-à-la-Croix",
+        "Line1": "1488 Route 169",
+        "PostalCode": "G8G 1A5",
+        "CountrySubDivisionCode": "QC"
+       },
+       "ShipDate": null,
+       "TotalAmt": 662.03,
+       "BillEmail": null,
+       "DocNumber": "2026000140",
+       "GivenName": "Manon",
+       "IsProject": null,
+       "LinkedTxn": [],
+       "SyncToken": "2",
+       "FamilyName": "et Marcel Côté",
+       "MiddleName": "Ferland",
+       "CompanyName": "9021-1095 Québec inc.",
+       "CurrencyRef": {
+        "name": "Dollar canadien",
+        "value": "CAD"
+       },
+       "CustomField": [],
+       "CustomerRef": null,
+       "DisplayName": "9021-1095 Québec inc.",
+       "EmailStatus": null,
+       "PrintStatus": null,
+       "PrivateNote": null,
+       "TrackingNum": null,
+       "CustomerMemo": null,
+       "PrimaryPhone": {
+        "FreeFormNumber": "418-349-2308"
+       },
+       "SalesTermRef": null,
+       "TxnTaxDetail": {
+        "TotalTax": 84.82
+       },
+       "__IMTINDEX__": 1,
+       "ShipMethodRef": null,
+       "V4IDPseudonym": "002093da742f3aa04f4963b9c27fe7f8977e4e",
+       "__IMTLENGTH__": 86,
+       "BillWithParent": null,
+       "ClientEntityId": null,
+       "AllowIPNPayment": null,
+       "BalanceWithJobs": 2808.88,
+       "CustomerTypeRef": null,
+       "PrimaryEmailAddr": {
+        "Address": "info@fraisesobec.com , manonetmarcel@hotmail.com"
+       },
+       "PrintOnCheckName": "9021-1095 Québec inc.",
+       "DefaultTaxCodeRef": null,
+       "AllowOnlinePayment": null,
+       "FullyQualifiedName": "9021-1095 Québec inc.",
+       "GlobalTaxCalculation": null,
+       "PrimaryTaxIdentifier": null,
+       "AllowOnlineACHPayment": null,
+       "SecondaryTaxIdentifier": null,
+       "PreferredDeliveryMethod": "None",
+       "AllowOnlineCreditCardPayment": null
+      }
+     ],
+     "__IMTKEY__": "543"
+    },
+    "21": {
+     "data": {
+      "map": {
+       "286": "18",
+       "287": "121",
+       "288": "148",
+       "289": "351",
+       "290": "402",
+       "291": "430",
+       "292": "442",
+       "293": "448",
+       "294": "536",
+       "295": "537",
+       "296": "541",
+       "297": "576",
+       "298": "681",
+       "299": "932",
+       "300": "973",
+       "301": "1033",
+       "302": "1090",
+       "303": "1105",
+       "304": "1141",
+       "305": "1187",
+       "306": "1217",
+       "307": "1256",
+       "308": "1392",
+       "309": "1472",
+       "310": "1644",
+       "311": "1674",
+       "312": "1687",
+       "313": "1691",
+       "314": "1909",
+       "315": "1718",
+       "316": "1734",
+       "317": "1754",
+       "318": "1776",
+       "319": "1833",
+       "320": "1836",
+       "321": "1838",
+       "322": "1841",
+       "323": "1849",
+       "324": "1850",
+       "325": "1861",
+       "326": "1862",
+       "327": "1864",
+       "328": "1867",
+       "329": "1868",
+       "330": "1874",
+       "331": "1880",
+       "332": "1885",
+       "333": "1886",
+       "334": "1916",
+       "335": "1918",
+       "336": "1923",
+       "337": "1924",
+       "338": "1929",
+       "339": "1930",
+       "340": "1932",
+       "341": "1933",
+       "342": "1934",
+       "343": "1936",
+       "344": "1937",
+       "345": "1939",
+       "346": "1945",
+       "347": "1946",
+       "348": "1947",
+       "349": "1948",
+       "350": "1949",
+       "351": "1951",
+       "352": "1953",
+       "353": "1954",
+       "354": "1955",
+       "355": "1956",
+       "356": "1957",
+       "357": "1958",
+       "358": "1959",
+       "359": "22",
+       "360": "23",
+       "361": "27",
+       "362": "59",
+       "363": "62",
+       "364": "64",
+       "365": "67",
+       "366": "73",
+       "367": "75",
+       "368": "78",
+       "369": "83",
+       "370": "87",
+       "371": "95",
+       "372": "100",
+       "373": "114",
+       "374": "115",
+       "375": "119",
+       "376": "130",
+       "377": "133",
+       "378": "140",
+       "379": "158",
+       "380": "166",
+       "381": "174",
+       "382": "175",
+       "383": "177",
+       "384": "179",
+       "385": "189",
+       "386": "204",
+       "387": "222",
+       "388": "224",
+       "389": "237",
+       "390": "240",
+       "391": "243",
+       "392": "256",
+       "393": "276",
+       "394": "289",
+       "395": "301",
+       "396": "303",
+       "397": "315",
+       "398": "323",
+       "399": "325",
+       "400": "331",
+       "401": "344",
+       "402": "346",
+       "403": "349",
+       "404": "352",
+       "405": "353",
+       "406": "354",
+       "407": "357",
+       "408": "361",
+       "409": "369",
+       "410": "373",
+       "411": "396",
+       "412": "403",
+       "413": "404",
+       "414": "406",
+       "415": "420",
+       "416": "421",
+       "417": "425",
+       "418": "451",
+       "419": "452",
+       "420": "454",
+       "421": "459",
+       "422": "469",
+       "423": "499",
+       "424": "515",
+       "425": "524",
+       "426": "529",
+       "427": "549",
+       "428": "559",
+       "429": "560",
+       "430": "563",
+       "431": "589",
+       "432": "593",
+       "433": "610",
+       "434": "621",
+       "435": "638",
+       "436": "657",
+       "437": "1896",
+       "438": "685",
+       "439": "690",
+       "440": "710",
+       "441": "712",
+       "442": "717",
+       "443": "723",
+       "444": "730",
+       "445": "752",
+       "446": "782",
+       "447": "880",
+       "448": "885",
+       "449": "893",
+       "450": "911",
+       "451": "916",
+       "452": "918",
+       "453": "936",
+       "454": "937",
+       "455": "970",
+       "456": "998",
+       "457": "1074",
+       "458": "1110",
+       "459": "1122",
+       "460": "1159",
+       "461": "1164",
+       "462": "1166",
+       "463": "1169",
+       "464": "1176",
+       "465": "1194",
+       "466": "1200",
+       "467": "1201",
+       "468": "1206",
+       "469": "1208",
+       "470": "1218",
+       "471": "1230",
+       "472": "1257",
+       "473": "1271",
+       "474": "1283",
+       "475": "1286",
+       "476": "1291",
+       "477": "1294",
+       "478": "1299",
+       "479": "1300",
+       "480": "1306",
+       "481": "1311",
+       "482": "1313",
+       "483": "1325",
+       "484": "1352",
+       "485": "1379",
+       "486": "1417",
+       "487": "1479",
+       "488": "1501",
+       "489": "1525",
+       "490": "1552",
+       "491": "1565",
+       "492": "1569",
+       "493": "1588",
+       "494": "1610",
+       "495": "1623",
+       "496": "1625",
+       "497": "1629",
+       "498": "1668",
+       "499": "1675",
+       "500": "1683",
+       "501": "1684",
+       "502": "1686",
+       "503": "1694",
+       "504": "1705",
+       "505": "1709",
+       "506": "1726",
+       "507": "1727",
+       "508": "1729",
+       "509": "1731",
+       "510": "1743",
+       "511": "1747",
+       "512": "1748",
+       "513": "1771",
+       "514": "1781",
+       "515": "1786",
+       "516": "1790",
+       "517": "1808",
+       "518": "1812",
+       "519": "1813",
+       "520": "1823",
+       "521": "1826",
+       "522": "1835",
+       "523": "1840",
+       "524": "1843",
+       "525": "1845",
+       "526": "1859",
+       "527": "1860",
+       "528": "1865",
+       "529": "1866",
+       "530": "1871",
+       "531": "1876",
+       "532": "1888",
+       "533": "1910",
+       "534": "1912",
+       "535": "1914",
+       "536": "1919",
+       "537": "1920",
+       "538": "1921",
+       "539": "1926",
+       "540": "1928",
+       "541": "1940",
+       "542": "1941",
+       "543": "65",
+       "544": "96",
+       "545": "438",
+       "546": "498",
+       "547": "544",
+       "548": "693",
+       "549": "879",
+       "550": "917",
+       "551": "929",
+       "552": "967",
+       "553": "101",
+       "554": "138",
+       "555": "398",
+       "556": "443",
+       "557": "1112",
+       "558": "1228",
+       "559": "1371",
+       "560": "1743",
+       "561": "1794",
+       "562": "1827",
+       "563": "1828",
+       "564": "1842",
+       "565": "1851",
+       "566": "1857",
+       "567": "1873",
+       "568": "1925",
+       "569": "1938",
+       "570": "1943",
+       "571": "1944",
+       "572": "1952",
+       "574": "98",
+       "575": "151",
+       "576": "185",
+       "577": "251",
+       "578": "287",
+       "579": "311",
+       "580": "341",
+       "581": "360",
+       "582": "392",
+       "583": "400",
+       "584": "427",
+       "585": "516",
+       "586": "558",
+       "587": "569",
+       "588": "581",
+       "589": "596",
+       "590": "626",
+       "591": "659",
+       "592": "729",
+       "593": "886",
+       "594": "1012",
+       "595": "1019",
+       "596": "1026",
+       "597": "1071",
+       "598": "1902",
+       "599": "1191",
+       "600": "1232",
+       "601": "1272",
+       "602": "1373",
+       "603": "1475",
+       "604": "1535",
+       "605": "1554",
+       "606": "1624",
+       "607": "1665",
+       "608": "1724",
+       "609": "1749",
+       "610": "1750",
+       "611": "1803",
+       "612": "1695",
+       "613": "687",
+       "620": "1918",
+       "642": "1980",
+       "653": "1991",
+       "656": "1229",
+       "657": "1961",
+       "658": "1964",
+       "659": "1966",
+       "660": "1970",
+       "661": "1972",
+       "662": "1977",
+       "663": "1978",
+       "664": "1938",
+       "665": "1990",
+       "666": "1376",
+       "667": "1915",
+       "668": "1994",
+       "669": "1995",
+       "670": "1881",
+       "671": "1996",
+       "672": "1967",
+       "673": "1691",
+       "674": "1974",
+       "675": "1968",
+       "676": "1841",
+       "679": "1999",
+       "690": "1967"
+      },
+      "count": 353,
+      "updated": "1787141160",
+      "conflicts": {
+       "351": [
+        "1997"
+       ],
+       "410": [
+        "1986"
+       ],
+       "477": [
+        "1998"
+       ],
+       "658": [
+        "1989"
+       ]
+      }
+     },
+     "headers": {
+      "nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+      "date": "Mon, 14 Sep 2026 14:15:04 GMT",
+      "link": "<https://fraisesetframboisesduquebec.com/wp-json/>; rel=\"https://api.w.org/\"",
+      "vary": "Accept-Encoding",
+      "allow": "GET",
+      "cf-ray": "a3b000679f37da52-IAD",
+      "server": "cloudflare",
+      "alt-svc": "h3=\":443\"; ma=86400",
+      "expires": "Mon, 14 Sep 2026 14:15:04 GMT",
+      "report-to": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=YGF...",
+      "connection": "keep-alive",
+      "content-type": "application/json; charset=UTF-8",
+      "x-robots-tag": "noindex",
+      "cache-control": "max-age=0",
+      "cf-cache-status": "DYNAMIC",
+      "x-cache-enabled": "false",
+      "x-xss-protection": "1; mode=block",
+      "speculation-rules": "\"/cdn-cgi/speculation\"",
+      "transfer-encoding": "chunked",
+      "x-nginx-cache-status": "BYPASS",
+      "x-content-type-options": "nosniff, nosniff",
+      "access-control-allow-origin": "*",
+      "access-control-allow-headers": "Authorization, X-WP-Nonce, Content-Disposition, Content-MD5, Content-Type, X-HTTP-Method-Override",
+      "access-control-allow-methods": "POST, GET, OPTIONS, PUT, DELETE",
+      "access-control-expose-headers": "X-WP-Total, X-WP-TotalPages, Link, Jet-Query-Total, Jet-Query-Pages",
+      "access-control-allow-credentials": "true"
+     },
+     "statusCode": 200
+    },
+    "22": {
+     "id": "1b4qBCqPipSsKY-ioc1jRN11UYSVrDJqu",
+     "kind": "drive#file",
+     "name": "2026-09-14",
+     "spaces": [
+      "drive"
+     ],
+     "driveId": "0AG65qikRQdZHUk9PVA",
+     "parents": [
+      "16x-TQ5Gb_-RaBKlfK7taNmWX6N_PvSRG"
+     ],
+     "starred": false,
+     "trashed": false,
+     "version": "1",
+     "iconLink": "https://drive-thirdparty.googleusercontent.com/16/type/application/vnd.google-apps.folder+48+shared",
+     "mimeType": "application/vnd.google-apps.folder",
+     "viewedByMe": false,
+     "createdTime": "2026-09-14T14:15:06.207Z",
+     "teamDriveId": "0AG65qikRQdZHUk9PVA",
+     "webViewLink": "https://drive.google.com/drive/folders/1b4qBCqPipSsKY-ioc1jRN11UYSVrDJqu",
+     "capabilities": {
+      "canCopy": true,
+      "canEdit": true,
+      "canShare": true,
+      "canTrash": true,
+      "canDelete": true,
+      "canRename": true,
+      "canComment": true,
+      "canUntrash": true,
+      "canDownload": true,
+      "canReadDrive": true,
+      "canReadLabels": false,
+      "canAddChildren": true,
+      "canListChildren": true,
+      "canModifyLabels": false,
+      "canModifyContent": true,
+      "canReadRevisions": true,
+      "canReadTeamDrive": true,
+      "canStartApproval": false,
+      "canTrashChildren": true,
+      "canAccessViaGenAi": true,
+      "canDeleteChildren": true,
+      "canRemoveChildren": true,
+      "canMoveTeamDriveItem": true,
+      "canMoveItemOutOfDrive": true,
+      "canMoveItemWithinDrive": true,
+      "canMoveItemIntoTeamDrive": true,
+      "canMoveChildrenOutOfDrive": true,
+      "canMoveItemOutOfTeamDrive": true,
+      "canMoveChildrenWithinDrive": true,
+      "canMoveItemWithinTeamDrive": true,
+      "canModifyContentRestriction": false,
+      "canRemoveContentRestriction": false,
+      "canAddFolderFromAnotherDrive": true,
+      "canEnableInheritedPermissions": true,
+      "canMoveChildrenOutOfTeamDrive": true,
+      "canChangeSecurityUpdateEnabled": false,
+      "canChangeViewersCanCopyContent": false,
+      "canDisableInheritedPermissions": true,
+      "canMoveChildrenWithinTeamDrive": true,
+      "canChangeItemDownloadRestriction": false,
+      "canModifyOwnerContentRestriction": false,
+      "canModifyEditorContentRestriction": false,
+      "canChangeCopyRequiresWriterPermission": false
+     },
+     "hasThumbnail": false,
+     "modifiedByMe": true,
+     "modifiedTime": "2026-09-14T14:15:06.207Z",
+     "permissionIds": [
+      "07758288680176402471"
+     ],
+     "folderColorRgb": "#8f8f8f",
+     "quotaBytesUsed": "0",
+     "isAppAuthorized": true,
+     "modifiedByMeTime": "2026-09-14T14:15:06.207Z",
+     "thumbnailVersion": "0",
+     "explicitlyTrashed": false,
+     "lastModifyingUser": {
+      "me": true,
+      "kind": "drive#user",
+      "photoLink": "https://lh3.googleusercontent.com/a/ACg8ocIZNgLRNbjz64p6O5vddJB1S8Iv8szRR9N3nuG3fci8RUtMypo2aQ=s64",
+      "displayName": "Gabriel Gaudreau",
+      "emailAddress": "ggaudreau@pardesign.net",
+      "permissionId": "06985810988225161587"
+     },
+     "linkShareMetadata": {
+      "securityUpdateEnabled": true,
+      "securityUpdateEligible": false
+     },
+     "downloadRestrictions": {
+      "itemDownloadRestriction": {
+       "restrictedForReaders": false,
+       "restrictedForWriters": false
+      },
+      "effectiveDownloadRestrictionWithContext": {
+       "restrictedForReaders": false,
+       "restrictedForWriters": false
+      }
+     },
+     "viewersCanCopyContent": true,
+     "clientEncryptionDetails": {
+      "decryptionMetadata": {}
+     },
+     "hasAugmentedPermissions": false,
+     "copyRequiresWriterPermission": false,
+     "inheritedPermissionsDisabled": false
+    }
+   }
+  },
+  "scenario": {
+   "dlq": false,
+   "slots": null,
+   "dataloss": false,
+   "maxErrors": 3,
+   "autoCommit": true,
+   "roundtrips": 1,
+   "sequential": false,
+   "confidential": false,
+   "freshVariables": false,
+   "autoCommitTriggerLast": true
+  }
+ },
+ "scheduling": {
+  "days": [
+   1,
+   15
+  ],
+  "time": "00:50",
+  "type": "yearly",
+  "months": [
+   1,
+   2,
+   3,
+   4,
+   5,
+   6,
+   7,
+   8,
+   9,
+   10,
+   11,
+   12
+  ]
+ },
+ "interface": {
+  "input": [],
+  "output": []
+ }
+}

@@ -1,0 +1,437 @@
+{
+ "name": "Frais de retard v3 - QB - Fraises",
+ "flow": [
+  {
+   "id": 1,
+   "module": "quickbooks:SearchForInvoices",
+   "version": 2,
+   "parameters": {
+    "__IMTCONN__": 4556787
+   },
+   "mapper": {
+    "type": "query",
+    "query": "SELECT * FROM Invoice \nWHERE Balance > '0' \n  AND TxnDate < '{{formatDate(addDays(now; -101); \"YYYY-MM-DD\")}}'\nMAXRESULTS 1000"
+   },
+   "metadata": {
+    "designer": {
+     "x": 0,
+     "y": 0
+    },
+    "restore": {
+     "expect": {
+      "type": {
+       "mode": "chose",
+       "label": "user-defined query"
+      }
+     },
+     "parameters": {
+      "__IMTCONN__": {
+       "data": {
+        "scoped": "true",
+        "connection": "quickbooks"
+       },
+       "label": "My QuickBooks connection (Association des producteurs de fraises et framboises du Québec (CA))"
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": 12,
+   "module": "quickbooks:MakeApiCall",
+   "version": 2,
+   "parameters": {
+    "__IMTCONN__": 4556787
+   },
+   "mapper": {
+    "url": "invoice/{{1.Id}}?minorversion=73",
+    "method": "GET",
+    "headers": [],
+    "qs": [],
+    "body": "",
+    "version": "v3"
+   },
+   "filter": {
+    "name": "Contributions seulement",
+    "conditions": [
+     [
+      {
+       "a": "{{1.Line[].SalesItemLineDetail.ClassRef.name}}",
+       "b": "Contribution",
+       "o": "text:contain"
+      }
+     ],
+     [
+      {
+       "a": "{{1.Line[].SalesItemLineDetail.ItemAccountRef.name}}",
+       "b": "Contribution",
+       "o": "text:contain"
+      }
+     ],
+     [
+      {
+       "a": "{{1.Line[].SalesItemLineDetail.ItemRef.name}}",
+       "b": "Contribution",
+       "o": "text:contain"
+      }
+     ]
+    ]
+   },
+   "metadata": {
+    "designer": {
+     "x": 300,
+     "y": 0,
+     "name": "GET facture brute (toutes les lignes + SyncToken frais)"
+    },
+    "restore": {
+     "parameters": {
+      "__IMTCONN__": {
+       "data": {
+        "scoped": "true",
+        "connection": "quickbooks"
+       },
+       "label": "My QuickBooks connection (Association des producteurs de fraises et framboises du Québec (CA))"
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": 13,
+   "module": "builtin:BasicFeeder",
+   "version": 1,
+   "parameters": {},
+   "mapper": {
+    "array": "{{12.body.Invoice.Line}}"
+   },
+   "metadata": {
+    "designer": {
+     "x": 600,
+     "y": 0,
+     "name": "Itère les lignes"
+    },
+    "restore": {
+     "expect": {
+      "array": {
+       "mode": "edit"
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": 14,
+   "module": "builtin:BasicAggregator",
+   "version": 1,
+   "parameters": {
+    "feeder": 13
+   },
+   "filter": {
+    "name": "Lignes Frais de retard (17)",
+    "conditions": [
+     [
+      {
+       "a": "{{13.SalesItemLineDetail.ItemRef.value}}",
+       "b": "17",
+       "o": "text:equal"
+      }
+     ]
+    ]
+   },
+   "mapper": {
+    "amount": "{{13.Amount}}",
+    "service_date": "{{13.SalesItemLineDetail.ServiceDate}}",
+    "description": "{{13.Description}}"
+   },
+   "metadata": {
+    "designer": {
+     "x": 900,
+     "y": 0,
+     "name": "Agrège les lignes de frais"
+    },
+    "restore": {
+     "extra": {
+      "feeder": {
+       "label": "Itère les lignes [13]"
+      },
+      "target": {
+       "label": "Custom"
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": 7,
+   "module": "util:SetVariables",
+   "version": 1,
+   "parameters": {},
+   "mapper": {
+    "variables": [
+     {
+      "name": "taux_annuel",
+      "value": "0.07"
+     },
+     {
+      "name": "days_overdue",
+      "value": "{{floor((parseDate(now) - parseDate(12.body.Invoice.TxnDate; \"YYYY-MM-DD\")) / (1000 * 60 * 60 * 24))}}"
+     },
+     {
+      "name": "chargeable_days",
+      "value": "{{if(floor((parseDate(now) - parseDate(12.body.Invoice.TxnDate; \"YYYY-MM-DD\")) / (1000 * 60 * 60 * 24)) >= 101; floor((parseDate(now) - parseDate(12.body.Invoice.TxnDate; \"YYYY-MM-DD\")) / (1000 * 60 * 60 * 24)) - 10; 0)}}"
+     },
+     {
+      "name": "previous_fees",
+      "value": "{{if(length(14.array) > 0; sum(map(14.array; \"amount\")); 0)}}"
+     },
+     {
+      "name": "last_fee_date",
+      "value": "{{ifempty(last(sort(map(14.array; \"service_date\"))); \"\")}}"
+     },
+     {
+      "name": "last_fee_description",
+      "value": "{{ifempty(last(map(14.array; \"description\")); \"\")}}"
+     }
+    ]
+   },
+   "metadata": {
+    "designer": {
+     "x": 1200,
+     "y": 0,
+     "name": "Jours, frais déjà facturés"
+    },
+    "restore": {
+     "expect": {
+      "variables": {
+       "items": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+       ]
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": 8,
+   "module": "util:SetVariables",
+   "version": 1,
+   "parameters": {},
+   "mapper": {
+    "variables": [
+     {
+      "name": "days_already_charged",
+      "value": "{{if(length(7.last_fee_date) > 0; floor((parseDate(7.last_fee_date; \"YYYY-MM-DD\") - parseDate(12.body.Invoice.TxnDate; \"YYYY-MM-DD\")) / (1000 * 60 * 60 * 24)) - 10; if(contains(7.last_fee_description; \"jours\"); parseNumber(trim(replace(replace(replace(replace(replace(7.last_fee_description; \"Frais de retard\"; \"\"); \"jours\"; \"\"); \"(\"; \"\"); \")\"; \"\"); \":\"; \"\"))); 0))}}"
+     },
+     {
+      "name": "unpaid_fees",
+      "value": "{{max(0; 7.previous_fees - (12.body.Invoice.TotalAmt - 12.body.Invoice.Balance))}}"
+     },
+     {
+      "name": "ratio_hors_taxes",
+      "value": "{{if(12.body.Invoice.TotalAmt - 7.previous_fees > 0; (12.body.Invoice.TotalAmt - 7.previous_fees - ifempty(12.body.Invoice.TxnTaxDetail.TotalTax; 0)) / (12.body.Invoice.TotalAmt - 7.previous_fees); 0)}}"
+     },
+     {
+      "name": "base",
+      "value": "{{max(0; 12.body.Invoice.Balance - max(0; 7.previous_fees - (12.body.Invoice.TotalAmt - 12.body.Invoice.Balance))) * if(12.body.Invoice.TotalAmt - 7.previous_fees > 0; (12.body.Invoice.TotalAmt - 7.previous_fees - ifempty(12.body.Invoice.TxnTaxDetail.TotalTax; 0)) / (12.body.Invoice.TotalAmt - 7.previous_fees); 0)}}"
+     }
+    ]
+   },
+   "metadata": {
+    "designer": {
+     "x": 1500,
+     "y": 0,
+     "name": "Jours déjà facturés, frais impayés, base hors taxes (art. 1570 CCQ)"
+    },
+    "restore": {
+     "expect": {
+      "variables": {
+       "items": [
+        null,
+        null,
+        null,
+        null
+       ]
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": 9,
+   "module": "util:SetVariables",
+   "version": 1,
+   "parameters": {},
+   "mapper": {
+    "variables": [
+     {
+      "name": "new_days",
+      "value": "{{max(0; 7.chargeable_days - 8.days_already_charged)}}"
+     },
+     {
+      "name": "fee",
+      "value": "{{round(8.base * 7.taux_annuel * max(0; 7.chargeable_days - 8.days_already_charged) / 365 * 100) / 100}}"
+     },
+     {
+      "name": "subtotal_pre",
+      "value": ",{\"Amount\":{{first(map(12.body.Invoice.Line; \"Amount\"; \"DetailType\"; \"SubTotalLineDetail\"))}},\"DetailType\":\"SubTotalLineDetail\",\"SubTotalLineDetail\":{}}"
+     },
+     {
+      "name": "subtotal_post",
+      "value": "{\"Amount\":{{first(map(12.body.Invoice.Line; \"Amount\"; \"DetailType\"; \"SubTotalLineDetail\"))}},\"DetailType\":\"SubTotalLineDetail\",\"SubTotalLineDetail\":{}},"
+     },
+     {
+      "name": "ext_key",
+      "value": ",\"CustomExtensions\":[]"
+     }
+    ]
+   },
+   "metadata": {
+    "designer": {
+     "x": 1800,
+     "y": 0,
+     "name": "Nouveaux jours et frais"
+    },
+    "restore": {
+     "expect": {
+      "variables": {
+       "items": [
+        null,
+        null,
+        null,
+        null,
+        null
+       ]
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": 10,
+   "module": "json:TransformToJSON",
+   "version": 1,
+   "parameters": {
+    "space": ""
+   },
+   "filter": {
+    "name": "Frais > 0",
+    "conditions": [
+     [
+      {
+       "a": "{{9.fee}}",
+       "b": "0",
+       "o": "number:greater"
+      },
+      {
+       "a": "{{9.new_days}}",
+       "b": "0",
+       "o": "number:greater"
+      }
+     ]
+    ]
+   },
+   "mapper": {
+    "object": "{{12.body.Invoice.Line}}"
+   },
+   "metadata": {
+    "designer": {
+     "x": 2100,
+     "y": 0,
+     "name": "Lignes brutes → JSON"
+    }
+   }
+  },
+  {
+   "id": 15,
+   "module": "util:SetVariables",
+   "version": 1,
+   "parameters": {},
+   "mapper": {
+    "variables": [
+     {
+      "name": "body",
+      "value": "{\"Id\":\"{{1.Id}}\",\"SyncToken\":\"{{12.body.Invoice.SyncToken}}\",\"sparse\":true,\"GlobalTaxCalculation\":\"TaxExcluded\",\"TxnTaxDetail\":{\"TxnTaxCodeRef\":{\"value\":\"7\"}},\"Line\":{{substring(replace(replace(replace(10.json; 9.subtotal_pre; \"\"); 9.subtotal_post; \"\"); 9.ext_key; \"\"); 0; length(replace(replace(replace(10.json; 9.subtotal_pre; \"\"); 9.subtotal_post; \"\"); 9.ext_key; \"\")) - 1)}},{\"DetailType\":\"SalesItemLineDetail\",\"Amount\":{{9.fee}},\"Description\":\"Frais de retard ({{9.new_days}} jours au {{formatDate(now; \"DD-MM-YYYY\")}})\",\"SalesItemLineDetail\":{\"ItemRef\":{\"value\":\"17\"},\"Qty\":1,\"UnitPrice\":{{9.fee}},\"ServiceDate\":\"{{formatDate(now; \"YYYY-MM-DD\")}}\",\"TaxCodeRef\":{\"value\":\"4\"}}}]}"
+     }
+    ]
+   },
+   "metadata": {
+    "designer": {
+     "x": 2400,
+     "y": 0,
+     "name": "Compose le corps (sans sous-total ni CustomExtensions)"
+    },
+    "restore": {
+     "expect": {
+      "variables": {
+       "items": [
+        null
+       ]
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": 11,
+   "module": "quickbooks:MakeApiCall",
+   "version": 2,
+   "parameters": {
+    "__IMTCONN__": 4556787
+   },
+   "mapper": {
+    "url": "invoice?minorversion=73",
+    "method": "POST",
+    "headers": [
+     {
+      "key": "Content-Type",
+      "value": "application/json"
+     }
+    ],
+    "qs": [],
+    "body": "{{15.body}}",
+    "version": "v3"
+   },
+   "metadata": {
+    "designer": {
+     "x": 2700,
+     "y": 0,
+     "name": "POST facture (sparse) + ligne de frais"
+    },
+    "restore": {
+     "parameters": {
+      "__IMTCONN__": {
+       "data": {
+        "scoped": "true",
+        "connection": "quickbooks"
+       },
+       "label": "My QuickBooks connection (Association des producteurs de fraises et framboises du Québec (CA))"
+      }
+     }
+    }
+   }
+  }
+ ],
+ "metadata": {
+  "instant": false,
+  "version": 1,
+  "designer": {
+   "orphans": []
+  },
+  "scenario": {
+   "roundtrips": 1,
+   "maxErrors": 3,
+   "autoCommit": true,
+   "autoCommitTriggerLast": true,
+   "sequential": false,
+   "confidential": false,
+   "dataloss": false,
+   "dlq": false,
+   "freshVariables": false
+  }
+ }
+}

@@ -1,0 +1,6 @@
+venv/
+__pycache__/
+*.pyc
+*.zip
+test_*.pdf
+apercu_*.png

@@ -1,0 +1,73 @@
+{
+ "scenarioId": 4406014,
+ "name": "Frais de retard ACTIF - QB - Fraises",
+ "isActive": true,
+ "lastEdit": "2026-09-22",
+ "scheduling": {
+  "type": "yearly",
+  "days": [
+   1,
+   15
+  ],
+  "time": "00:06",
+  "months": [
+   1,
+   2,
+   3,
+   4,
+   5,
+   6,
+   7,
+   8,
+   9,
+   10,
+   11,
+   12
+  ]
+ },
+ "flow": [
+  {
+   "id": 1,
+   "module": "quickbooks:SearchForInvoices",
+   "query": "SELECT * FROM Invoice WHERE Balance > '0' AND TxnDate < '{{addDays(now; -101)}}' MAXRESULTS 1000"
+  },
+  {
+   "id": 5,
+   "module": "builtin:BasicAggregator",
+   "feeder": 1
+  },
+  {
+   "id": 6,
+   "module": "builtin:BasicFeeder",
+   "array": "{{5.array}}"
+  },
+  {
+   "id": 7,
+   "module": "util:SetVariables",
+   "filter": "contribution only (6.Line[].SalesItemLineDetail.ClassRef.name ou ItemAccountRef.name contient 'Contribution')",
+   "variables": {
+    "days_overdue": "floor((now - 6.TxnDate)/jour)",
+    "chargeable_days": "si days_overdue >= 101 alors days_overdue - 10 sinon 0",
+    "late_fee_amount": "round(6.Line[1].Amount * 0.07 * chargeable_days / 365; 2)"
+   }
+  },
+  {
+   "id": 8,
+   "module": "quickbooks:UpdateInvoice",
+   "filter": "late_fee_amount > 0",
+   "Line": [
+    "Line[1] recopiée (ItemRef, Qty, UnitPrice, Amount, Description, TaxCodeRef=7 GST/QST, ServiceDate=TxnDate)",
+    "Frais de retard: ItemRef=17, Qty=1, Amount=late_fee_amount, TaxCodeRef=4 (Exempt), Description='Frais de retard (N jours)'"
+   ],
+   "TxnTaxDetail": {
+    "TxnTaxCodeRef": "7"
+   }
+  }
+ ],
+ "problemes": [
+  "Remplace TOUTES les lignes par Line[1] + la ligne de frais : rabais, crédits en ligne, autres lignes disparaissent.",
+  "Base = Line[1].Amount (montant d'origine hors taxes) : ignore paiements partiels et notes de crédit.",
+  "Frais recalculés cumulativement à chaque passage sur toute la période, ligne remplacée (pas d'historique).",
+  "Force le code de taxe 7 sur Line[1] quel que soit son code d'origine."
+ ]
+}

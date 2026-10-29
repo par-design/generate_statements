@@ -1,0 +1,248 @@
+{
+    "name": "Frais de retard v2 - QB - Fraises",
+    "flow": [
+        {
+            "id": 1,
+            "module": "quickbooks:SearchForInvoices",
+            "version": 2,
+            "parameters": {
+                "__IMTCONN__": 4556787
+            },
+            "mapper": {
+                "type": "query",
+                "query": "SELECT * FROM Invoice \nWHERE Balance > '0' \n  AND TxnDate < '{{formatDate(addDays(now; -101); \"YYYY-MM-DD\")}}'\nMAXRESULTS 1000"
+            },
+            "metadata": {
+                "designer": {
+                    "x": 0,
+                    "y": 0
+                },
+                "restore": {
+                    "expect": {
+                        "type": {
+                            "mode": "chose",
+                            "label": "user-defined query"
+                        }
+                    },
+                    "parameters": {
+                        "__IMTCONN__": {
+                            "data": {
+                                "scoped": "true",
+                                "connection": "quickbooks"
+                            },
+                            "label": "My QuickBooks connection (Association des producteurs de fraises et framboises du Québec (CA))"
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "id": 7,
+            "module": "util:SetVariables",
+            "version": 1,
+            "parameters": {},
+            "mapper": {
+                "scope": "roundtrip",
+                "variables": [
+                    {
+                        "name": "days_overdue",
+                        "value": "{{floor((parseDate(now) - parseDate(1.TxnDate)) / (1000 * 60 * 60 * 24))}}"
+                    },
+                    {
+                        "name": "chargeable_days",
+                        "value": "{{if(floor((parseDate(now) - parseDate(1.TxnDate)) / (1000 * 60 * 60 * 24)) >= 101; floor((parseDate(now) - parseDate(1.TxnDate)) / (1000 * 60 * 60 * 24)) - 10; 0)}}"
+                    },
+                    {
+                        "name": "previous_fees",
+                        "value": "{{ifempty(sum(map(1.Line; Amount; SalesItemLineDetail.ItemRef.value; 17)); 0)}}"
+                    },
+                    {
+                        "name": "last_fee_date",
+                        "value": "{{last(sort(map(1.Line; SalesItemLineDetail.ServiceDate; SalesItemLineDetail.ItemRef.value; 17)))}}"
+                    },
+                    {
+                        "name": "last_fee_description",
+                        "value": "{{last(map(1.Line; Description; SalesItemLineDetail.ItemRef.value; 17))}}"
+                    }
+                ]
+            },
+            "metadata": {
+                "designer": {
+                    "x": 300,
+                    "y": 0
+                },
+                "restore": {
+                    "expect": {
+                        "scope": {
+                            "label": "One cycle"
+                        }
+                    }
+                }
+            },
+            "filter": {
+                "name": "Contributions seulement",
+                "conditions": [
+                    [
+                        {
+                            "a": "{{1.Line[].SalesItemLineDetail.ClassRef.name}}",
+                            "b": "Contribution",
+                            "o": "text:contain"
+                        }
+                    ],
+                    [
+                        {
+                            "a": "{{1.Line[].SalesItemLineDetail.ItemAccountRef.name}}",
+                            "b": "Contribution",
+                            "o": "text:contain"
+                        }
+                    ]
+                ]
+            }
+        },
+        {
+            "id": 8,
+            "module": "util:SetVariables",
+            "version": 1,
+            "parameters": {},
+            "mapper": {
+                "scope": "roundtrip",
+                "variables": [
+                    {
+                        "name": "days_already_charged",
+                        "value": "{{if(length(7.last_fee_date) > 0; floor((parseDate(7.last_fee_date; \"YYYY-MM-DD\") - parseDate(1.TxnDate)) / (1000 * 60 * 60 * 24)) - 10; if(length(7.last_fee_description) > 0; parseNumber(replace(7.last_fee_description; /.*\\((\\d+) jours\\).*/; $1)); 0))}}"
+                    },
+                    {
+                        "name": "base",
+                        "value": "{{max(0; 1.Balance - 7.previous_fees)}}"
+                    }
+                ]
+            },
+            "metadata": {
+                "designer": {
+                    "x": 600,
+                    "y": 0
+                },
+                "restore": {
+                    "expect": {
+                        "scope": {
+                            "label": "One cycle"
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "id": 9,
+            "module": "util:SetVariables",
+            "version": 1,
+            "parameters": {},
+            "mapper": {
+                "scope": "roundtrip",
+                "variables": [
+                    {
+                        "name": "new_days",
+                        "value": "{{7.chargeable_days - 8.days_already_charged}}"
+                    },
+                    {
+                        "name": "fee",
+                        "value": "{{round(8.base * 0.07 * (7.chargeable_days - 8.days_already_charged) / 365 * 100) / 100}}"
+                    }
+                ]
+            },
+            "metadata": {
+                "designer": {
+                    "x": 900,
+                    "y": 0
+                },
+                "restore": {
+                    "expect": {
+                        "scope": {
+                            "label": "One cycle"
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "id": 10,
+            "module": "json:TransformToJSON",
+            "version": 1,
+            "parameters": {
+                "space": ""
+            },
+            "filter": {
+                "name": "Frais > 0",
+                "conditions": [
+                    [
+                        {
+                            "a": "{{9.fee}}",
+                            "b": "0",
+                            "o": "number:greater"
+                        },
+                        {
+                            "a": "{{9.new_days}}",
+                            "b": "0",
+                            "o": "number:greater"
+                        }
+                    ]
+                ]
+            },
+            "mapper": {
+                "object": "{{1.Line}}"
+            },
+            "metadata": {
+                "designer": {
+                    "x": 1200,
+                    "y": 0
+                }
+            }
+        },
+        {
+            "id": 11,
+            "module": "quickbooks:MakeAPICall",
+            "version": 2,
+            "parameters": {
+                "__IMTCONN__": 4556787
+            },
+            "mapper": {
+                "url": "invoice?minorversion=73",
+                "method": "POST",
+                "headers": [
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "qs": [],
+                "body": "{\"Id\":\"{{1.Id}}\",\"SyncToken\":\"{{1.SyncToken}}\",\"sparse\":true,\"Line\":{{substring(10.json; 0; length(10.json) - 1)}},{\"DetailType\":\"SalesItemLineDetail\",\"Amount\":{{9.fee}},\"Description\":\"Frais de retard ({{9.new_days}} jours au {{formatDate(now; \"DD-MM-YYYY\")}})\",\"SalesItemLineDetail\":{\"ItemRef\":{\"value\":\"17\"},\"Qty\":1,\"UnitPrice\":{{9.fee}},\"ServiceDate\":\"{{formatDate(now; \"YYYY-MM-DD\")}}\",\"TaxCodeRef\":{\"value\":\"4\"}}}]}"
+            },
+            "metadata": {
+                "designer": {
+                    "x": 1500,
+                    "y": 0
+                }
+            }
+        }
+    ],
+    "metadata": {
+        "instant": false,
+        "version": 1,
+        "scenario": {
+            "roundtrips": 1,
+            "maxErrors": 3,
+            "autoCommit": true,
+            "autoCommitTriggerLast": true,
+            "sequential": true,
+            "slots": null,
+            "confidential": false,
+            "dataloss": false,
+            "dlq": false,
+            "freshVariables": false
+        },
+        "designer": {
+            "orphans": []
+        },
+        "zone": "us1.make.com",
+        "notes": []
+    }
+}

@@ -80,7 +80,7 @@ TPS_RATE = 5.0
 TVQ_RATE = 9.975
 COMBINED_RATE = TPS_RATE + TVQ_RATE
 # IDs d'article QuickBooks connus pour les frais de retard (varie d'un fichier à l'autre).
-FRAIS_RETARD_ITEM_ID = ["17", "18"]
+FRAIS_RETARD_ITEM_ID = ["17"]
 # Détection de secours par nom d'article (insensible à la casse/accents) si l'ID ne correspond pas.
 FRAIS_RETARD_KEYWORDS = ("frais de retard", "frais retard", "interet", "intérêt", "late fee", "penalite", "pénalité")
 # Champs qui n'existent que sur l'entité Customer de QuickBooks : leur présence
