@@ -72,3 +72,21 @@ Non couverts par ce test : contribution simple sans paiement, ligne de rabais n�
 - Ancien scénario « Frais de retard ACTIF » (4406014) désactivé, conservé pour référence.
 - Scénario temporaire de lecture, data store et structure de test supprimés.
 - Reste à faire côté QuickBooks : supprimer ou neutraliser les factures de test du client PAR Design (TEST2026-10-30 à 34), sinon v3 leur ajoutera des frais à chaque passage.
+
+## Simulation à blanc du 29 oct. 2026 (vraies factures, aucune écriture QB)
+
+Copie du v3 sans le module POST, chaque facture écrite dans un data store Make (scénario et data store supprimés après coup). 139 factures de contribution de plus de 101 jours avec solde ; 974 opérations, 93 s.
+
+- 137 vraies factures : toutes portent déjà une ligne v1 « Frais de retard (N jours) ». Le v3 n'ajoute que les jours écoulés depuis (14 ou 15 jours), de 0,06 $ à 19,91 $, environ 300 $ au total pour le passage du 1er novembre.
+- Un paiement partiel réel (2026000132 : 23,60 $ restant sur 1 000,25 $) : base 20,53 $ hors taxes, frais 0,06 $, conforme à la règle du Code civil.
+- Formule et base recalculées hors Make sur les 100 premiers enregistrements : aucun écart.
+- Aucune ligne négative (rabais) dans les factures en retard ; ce cas reste non testé.
+- Facture TEST2026-10-29 (client APFFQ, 1er mai 2025, sans ligne de frais) : 57,81 $ seraient ajoutés. À supprimer avec les autres factures de test.
+
+**Bogue trouvé et corrigé (lignes mixtes v1 + v3).** Sur TEST2026-10-32 (ligne v1 « 30 jours » sans ServiceDate + ligne v3 avec ServiceDate), `last(sort(map(14.array; "service_date")))` renvoyait vide à cause de l'entrée sans date, donc le calcul retombait sur l'analyse du texte de la ligne v3 « 96 jours au 29-10-2026 », dont `parseNumber` faisait 9629102026. Résultat : 0 nouveau jour pour toujours. Après le 1er novembre, toutes les vraies factures auraient été dans ce cas au passage du 15. Correctif :
+
+- module 14 : `service_date = ifempty(ServiceDate; "0000-00-00")` ;
+- module 7 : `last_fee_date` = dernière date triée, vide si c'est « 0000-00-00 » ;
+- module 8 : l'analyse du texte ne lit que le nombre avant « jours » (`split`), au cas où.
+
+Vérifié par une seconde simulation : TEST2026-10-32 → 126 jours déjà facturés, 0 nouveau jour. Appliqué au scénario de production 5008892 le 29 oct. 2026.

@@ -140,7 +140,7 @@
    },
    "mapper": {
     "amount": "{{13.Amount}}",
-    "service_date": "{{13.SalesItemLineDetail.ServiceDate}}",
+    "service_date": "{{ifempty(13.SalesItemLineDetail.ServiceDate; \"0000-00-00\")}}",
     "description": "{{13.Description}}"
    },
    "metadata": {
@@ -186,7 +186,7 @@
      },
      {
       "name": "last_fee_date",
-      "value": "{{ifempty(last(sort(map(14.array; \"service_date\"))); \"\")}}"
+      "value": "{{if(length(14.array) > 0; if(last(sort(map(14.array; \"service_date\"))) = \"0000-00-00\"; \"\"; last(sort(map(14.array; \"service_date\")))); \"\")}}"
      },
      {
       "name": "last_fee_description",
@@ -225,7 +225,7 @@
     "variables": [
      {
       "name": "days_already_charged",
-      "value": "{{if(length(7.last_fee_date) > 0; floor((parseDate(7.last_fee_date; \"YYYY-MM-DD\") - parseDate(12.body.Invoice.TxnDate; \"YYYY-MM-DD\")) / (1000 * 60 * 60 * 24)) - 10; if(contains(7.last_fee_description; \"jours\"); parseNumber(trim(replace(replace(replace(replace(replace(7.last_fee_description; \"Frais de retard\"; \"\"); \"jours\"; \"\"); \"(\"; \"\"); \")\"; \"\"); \":\"; \"\"))); 0))}}"
+      "value": "{{if(length(7.last_fee_date) > 0; floor((parseDate(7.last_fee_date; \"YYYY-MM-DD\") - parseDate(12.body.Invoice.TxnDate; \"YYYY-MM-DD\")) / (1000 * 60 * 60 * 24)) - 10; if(contains(7.last_fee_description; \"jours\"); parseNumber(trim(replace(replace(get(split(7.last_fee_description; \" jours\"); 1); \"Frais de retard\"; \"\"); \"(\"; \"\"))); 0))}}"
      },
      {
       "name": "unpaid_fees",
