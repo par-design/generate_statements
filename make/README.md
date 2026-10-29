@@ -22,14 +22,18 @@ Dossier Make : « Fraises » (folderId 297101), équipe PAR Design (58943).
 ## Ce que corrige v3 par rapport au scénario actif (v1)
 
 1. **Crédits et autres lignes conservés.** v1 remplaçait toutes les lignes par la première + la ligne de frais. v3 relit la facture brute par l'API (`GET invoice/{Id}`), renvoie toutes les lignes telles quelles et n'ajoute que la ligne de frais, avec un SyncToken frais.
-2. **Paiement partiel / note de crédit appliquée.** La base de calcul est le solde réellement impayé de la facture moins les frais déjà facturés (`base = Balance - previous_fees`), au lieu du montant d'origine de la première ligne.
+2. **Paiement partiel / note de crédit appliquée.** La base de calcul est la contribution qui reste à payer, selon la règle d'imputation de l'art. 1570 C.c.Q. (un paiement partiel s'impute d'abord sur les intérêts, puis sur le capital) :
+   - `paiements = TotalAmt - Balance` (paiements et notes de crédit appliqués) ;
+   - `frais_impayés = max(0; frais_déjà_facturés - paiements)` ;
+   - `base = Balance - frais_impayés`.
+   Sans paiement, la base exclut les frais déjà facturés (pas d'intérêt sur intérêt, art. 1620 C.c.Q.). Avec un paiement, les frais sont réputés réglés en premier et le reste du solde est de la contribution.
 3. **Frais incrémentaux.** Chaque passage ajoute une ligne « Frais de retard (N jours au JJ-MM-AAAA) » pour les jours non encore facturés, au lieu de recalculer et remplacer. Les lignes v1 (« Frais de retard (120 jours) », sans ServiceDate) sont reconnues par l'expression régulière pour ne pas refacturer les jours déjà couverts.
 4. Le code de taxe des lignes existantes n'est plus écrasé.
 
 ## Décisions en attente (client)
 
 - **Taxes** : la base inclut les taxes (`diviseur_taxes = 1`). Pour calculer hors taxes, mettre `diviseur_taxes = 1.14975`. La ligne de frais reste exempte (code 4).
-- **Paiement partiel** : hypothèse actuelle = un paiement s'impute d'abord à la contribution (base = solde − frais impayés). Si le client veut l'inverse (frais payés d'abord), `base = Balance`.
+- **Paiement partiel** : réglé le 29 oct. 2026, règle du Code civil (art. 1570), voir plus haut.
 - **Période avant un paiement partiel** : v3 facture les nouveaux jours sur le solde au moment du passage. Pour un calcul par segments (ancien solde jusqu'à la date du paiement), il faudrait lire les paiements liés (`LinkedTxn`) — non implémenté.
 
 ## Mise en production

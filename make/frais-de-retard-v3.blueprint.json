@@ -166,8 +166,12 @@
       "value": "{{if(length(7.last_fee_date) > 0; floor((parseDate(7.last_fee_date; \"YYYY-MM-DD\") - parseDate(12.body.Invoice.TxnDate; \"YYYY-MM-DD\")) / (1000 * 60 * 60 * 24)) - 10; if(length(7.last_fee_description) > 0; parseNumber(replace(7.last_fee_description; /.*\\((\\d+) jours.*/; $1)); 0))}}"
      },
      {
+      "name": "unpaid_fees",
+      "value": "{{max(0; 7.previous_fees - (12.body.Invoice.TotalAmt - 12.body.Invoice.Balance))}}"
+     },
+     {
       "name": "base",
-      "value": "{{max(0; 12.body.Invoice.Balance - 7.previous_fees) / 7.diviseur_taxes}}"
+      "value": "{{max(0; 12.body.Invoice.Balance - max(0; 7.previous_fees - (12.body.Invoice.TotalAmt - 12.body.Invoice.Balance))) / 7.diviseur_taxes}}"
      }
     ]
    },
@@ -175,7 +179,7 @@
     "designer": {
      "x": 900,
      "y": 0,
-     "name": "Jours déjà facturés, base de calcul"
+     "name": "Jours déjà facturés, frais impayés, base (art. 1570 CCQ)"
     },
     "restore": {
      "expect": {
@@ -184,6 +188,7 @@
       },
       "variables": {
        "items": [
+        null,
         null,
         null
        ]
