@@ -42,3 +42,33 @@ Dossier Make : « Fraises » (folderId 297101), équipe PAR Design (58943).
 1. Tester v3 à la main sur une facture de test (bac à sable ou facture connue), vérifier les lignes conservées et le montant.
 2. Désactiver « Frais de retard ACTIF » (4406014).
 3. Donner à v3 la planification du 1er et du 15 à 00:06, puis l'activer.
+
+## Test du 29 octobre 2026 (client PAR Design, id 620)
+
+Scénario v3 lancé deux fois, restreint au client 620 par la requête du premier module.
+
+| Facture | Cas | Attendu | Obtenu |
+|---|---|---|---|
+| TEST2026-10-30 | paiement partiel 400 $ + note de crédit 200 $ | ligne 11,55 $ | 11,55 $, paiements toujours liés, taxes inchangées |
+| TEST2026-10-32 | ancienne ligne de frais « 30 jours » (7 $) | ligne 18,41 $ pour 96 jours, ancienne ligne conservée | conforme |
+| TEST2026-10-33 | contribution trop récente | rien | rien |
+| TEST2026-10-34 | hors contribution (et trop récente) | rien | rien |
+
+Second passage le même jour : aucune nouvelle ligne (jetons de version inchangés).
+
+Non couverts par ce test : contribution simple sans paiement, ligne de rabais négative, facture hors contribution assez vieille pour passer la date.
+
+## Pièges Make rencontrés (blueprint créé par l'API)
+
+- `util:SetVariables` n'a plus de champ `scope` : le laisser fait échouer la validation.
+- Une expression régulière dans une expression `{{ }}` fait échouer la validation (« 1 problem found », sans détail).
+- `map()` n'accepte pas de clé imbriquée (`SalesItemLineDetail.ItemRef.value`), et les clés doivent être entre guillemets dans un blueprint. D'où l'itérateur + agrégateur filtré pour isoler les lignes de frais.
+- Le module « Make an API call » s'appelle `quickbooks:MakeApiCall` et exige `"version": "v3"` dans le mapper.
+- QuickBooks refuse (« erreur lors du calcul de la taxe ») une mise à jour partielle des lignes si on renvoie la ligne `SubTotalLineDetail`, le champ `CustomExtensions`, ou si on omet `GlobalTaxCalculation` et `TxnTaxDetail.TxnTaxCodeRef`.
+
+## Avant la mise en production
+
+1. Retirer `AND CustomerRef = '620'` de la requête du premier module (le fichier ici ne contient pas cette restriction).
+2. Désactiver « Frais de retard ACTIF » (4406014), donner à v3 l'horaire du 1er et du 15 à 00:06, activer.
+3. Supprimer le scénario temporaire « TEMP lecture factures PAR Design » (5009063), le data store « TEMP factures PAR Design » (98151) et la structure « TEMP facture brute JSON » (299736).
+4. Nettoyer ou supprimer les factures de test du client PAR Design dans QuickBooks.
