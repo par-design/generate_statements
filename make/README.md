@@ -27,12 +27,13 @@ Dossier Make : « Fraises » (folderId 297101), équipe PAR Design (58943).
    - `frais_impayés = max(0; frais_déjà_facturés - paiements)` ;
    - `base = Balance - frais_impayés`.
    Sans paiement, la base exclut les frais déjà facturés (pas d'intérêt sur intérêt, art. 1620 C.c.Q.). Avec un paiement, les frais sont réputés réglés en premier et le reste du solde est de la contribution.
+   - **Hors taxes** : la base est ramenée au montant avant taxes avec la proportion réelle de la facture, `ratio_hors_taxes = (TotalAmt - frais - TotalTax) / (TotalAmt - frais)` (les frais étant exempts, toute la taxe porte sur la contribution). Exact même si une ligne est exempte, contrairement à un diviseur fixe de 1,14975.
 3. **Frais incrémentaux.** Chaque passage ajoute une ligne « Frais de retard (N jours au JJ-MM-AAAA) » pour les jours non encore facturés, au lieu de recalculer et remplacer. Les lignes v1 (« Frais de retard (120 jours) », sans ServiceDate) sont reconnues par l'expression régulière pour ne pas refacturer les jours déjà couverts.
 4. Le code de taxe des lignes existantes n'est plus écrasé.
 
 ## Décisions en attente (client)
 
-- **Taxes** : la base inclut les taxes (`diviseur_taxes = 1`). Pour calculer hors taxes, mettre `diviseur_taxes = 1.14975`. La ligne de frais reste exempte (code 4).
+- **Taxes** : réglé le 29 oct. 2026, les frais se calculent sur le montant hors taxes (voir plus haut). La ligne de frais reste exempte (code 4).
 - **Paiement partiel** : réglé le 29 oct. 2026, règle du Code civil (art. 1570), voir plus haut.
 - **Période avant un paiement partiel** : v3 facture les nouveaux jours sur le solde au moment du passage. Pour un calcul par segments (ancien solde jusqu'à la date du paiement), il faudrait lire les paiements liés (`LinkedTxn`) — non implémenté.
 

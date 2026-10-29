@@ -102,10 +102,6 @@
       "value": "0.07"
      },
      {
-      "name": "diviseur_taxes",
-      "value": "1"
-     },
-     {
       "name": "days_overdue",
       "value": "{{floor((parseDate(now) - parseDate(12.body.Invoice.TxnDate; \"YYYY-MM-DD\")) / (1000 * 60 * 60 * 24))}}"
      },
@@ -145,7 +141,6 @@
         null,
         null,
         null,
-        null,
         null
        ]
       }
@@ -170,8 +165,12 @@
       "value": "{{max(0; 7.previous_fees - (12.body.Invoice.TotalAmt - 12.body.Invoice.Balance))}}"
      },
      {
+      "name": "ratio_hors_taxes",
+      "value": "{{if(12.body.Invoice.TotalAmt - 7.previous_fees > 0; (12.body.Invoice.TotalAmt - 7.previous_fees - ifempty(12.body.Invoice.TxnTaxDetail.TotalTax; 0)) / (12.body.Invoice.TotalAmt - 7.previous_fees); 0)}}"
+     },
+     {
       "name": "base",
-      "value": "{{max(0; 12.body.Invoice.Balance - max(0; 7.previous_fees - (12.body.Invoice.TotalAmt - 12.body.Invoice.Balance))) / 7.diviseur_taxes}}"
+      "value": "{{max(0; 12.body.Invoice.Balance - max(0; 7.previous_fees - (12.body.Invoice.TotalAmt - 12.body.Invoice.Balance))) * if(12.body.Invoice.TotalAmt - 7.previous_fees > 0; (12.body.Invoice.TotalAmt - 7.previous_fees - ifempty(12.body.Invoice.TxnTaxDetail.TotalTax; 0)) / (12.body.Invoice.TotalAmt - 7.previous_fees); 0)}}"
      }
     ]
    },
@@ -179,7 +178,7 @@
     "designer": {
      "x": 900,
      "y": 0,
-     "name": "Jours déjà facturés, frais impayés, base (art. 1570 CCQ)"
+     "name": "Jours déjà facturés, frais impayés, base hors taxes (art. 1570 CCQ)"
     },
     "restore": {
      "expect": {
@@ -188,6 +187,7 @@
       },
       "variables": {
        "items": [
+        null,
         null,
         null,
         null
