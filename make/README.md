@@ -17,7 +17,7 @@ Dossier Make : « Fraises » (folderId 297101), équipe PAR Design (58943).
 - Ils deviennent exigibles à partir du 101e jour (aucun frais avant).
 - Taux : 7 % par an, au prorata des jours (`taux_annuel`).
 - Seules les factures de contribution sont visées (filtre « Contributions seulement »).
-- Article QuickBooks « Frais de retard » = ItemRef 17, code de taxe 4 (**Exempt**).
+- Article QuickBooks « Frais de retard » = ItemRef 17, code de taxe 4 (**Exempt**). C'est le seul article de frais : l'article 18 (« Contribution test », compte Intérêts, supprimé le 29 oct. 2026) a été retiré du scénario de relevés et de la liste par défaut de `app.py`.
 
 ## Ce que corrige v3 par rapport au scénario actif (v1)
 

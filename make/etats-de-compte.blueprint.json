@@ -1320,7 +1320,7 @@
      "customer_name": "{{9.DisplayName}}",
      "company_address": "555 Bd Roland-Therrien, Longueuil, QC J4J 5J1",
      "customer_address": "{{9.ShipAddr.Line1}} {{9.ShipAddr.City}}, {{9.ShipAddr.CountrySubDivisionCode}}, {{9.ShipAddr.PostalCode}}",
-     "frais_retard_item_id": "18",
+     "frais_retard_item_id": "17",
      "customer_member_number": "{{get(21.data.map; 9.Id)}}",
      "customer_member_number_source": "wp"
     },
