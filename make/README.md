@@ -6,9 +6,9 @@ Dossier Make : « Fraises » (folderId 297101), équipe PAR Design (58943).
 
 | Fichier | Quoi |
 |---|---|
-| `frais-de-retard-v1-actif.notes.json` | Résumé du scénario **actif** en production (id 4406014) au 2026-10-29, avec ses problèmes. |
+| `frais-de-retard-v1-actif.notes.json` | Résumé de l'ancien scénario (id 4406014, désactivé le 29 oct. 2026), avec ses problèmes. |
 | `frais-de-retard-v2.blueprint.json` + `.body.txt` | Brouillon v2 (14 oct. 2026) : mise à jour sparse par appel API, frais incrémentaux. Jamais déployé. |
-| `frais-de-retard-v3.blueprint.json` | Version v3 construite à partir de v2, créée dans Make **inactive, en exécution manuelle**. |
+| `frais-de-retard-v3.blueprint.json` | Version v3, **en production depuis le 29 oct. 2026** (id 5008892, le 1er et le 15 à 00:06). |
 | `etats-de-compte.blueprint.json` | Export du scénario « QB - États de compte » (id 4607525), clé API masquée. |
 
 ## Règle des frais de retard
@@ -66,9 +66,9 @@ Non couverts par ce test : contribution simple sans paiement, ligne de rabais n�
 - Le module « Make an API call » s'appelle `quickbooks:MakeApiCall` et exige `"version": "v3"` dans le mapper.
 - QuickBooks refuse (« erreur lors du calcul de la taxe ») une mise à jour partielle des lignes si on renvoie la ligne `SubTotalLineDetail`, le champ `CustomExtensions`, ou si on omet `GlobalTaxCalculation` et `TxnTaxDetail.TxnTaxCodeRef`.
 
-## Avant la mise en production
+## Mise en production (faite le 29 oct. 2026)
 
-1. Retirer `AND CustomerRef = '620'` de la requête du premier module (le fichier ici ne contient pas cette restriction).
-2. Désactiver « Frais de retard ACTIF » (4406014), donner à v3 l'horaire du 1er et du 15 à 00:06, activer.
-3. Supprimer le scénario temporaire « TEMP lecture factures PAR Design » (5009063), le data store « TEMP factures PAR Design » (98151) et la structure « TEMP facture brute JSON » (299736).
-4. Nettoyer ou supprimer les factures de test du client PAR Design dans QuickBooks.
+- v3 (5008892) : restriction au client de test retirée, horaire du 1er et du 15 à 00:06, activé. Prochain passage : 1er novembre 2026.
+- Ancien scénario « Frais de retard ACTIF » (4406014) désactivé, conservé pour référence.
+- Scénario temporaire de lecture, data store et structure de test supprimés.
+- Reste à faire côté QuickBooks : supprimer ou neutraliser les factures de test du client PAR Design (TEST2026-10-30 à 34), sinon v3 leur ajoutera des frais à chaque passage.
