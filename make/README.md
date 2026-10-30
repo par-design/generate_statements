@@ -103,3 +103,7 @@ Le bogue des lignes mixtes a montré qu'un calcul absurde pouvait passer sans br
 Toute facture qui viole une règle est **ignorée** (aucune écriture QuickBooks) et un courriel d'alerte part à ggaudreau@pardesign.net (module Gmail, connexion Google de Gabriel) avec le numéro de facture, le client et toutes les valeurs calculées. Les factures saines suivent la route normale (filtre « OK et frais > 0 », puis composition et POST).
 
 Testé le 29 oct. 2026 avec une copie restreinte au client PAR Design, sans module POST et avec une anomalie forcée sur TEST2026-10-32 : un seul courriel reçu, pour cette facture, les autres n'ont rien déclenché. Copie supprimée.
+
+## Vérification du 29 oct. 2026 : factures hors contribution sur les relevés
+
+Le scénario « QB - États de compte » n'a aucun filtre sur le type de facture (`Balance > '0'` seulement) et `app.py` non plus ; le scénario n'a pas été modifié entre le 1er et le 29 octobre (hors l'article 17), donc les relevés du 1er et du 15 octobre incluaient déjà ces factures. Preuve de bout en bout : relevé du client 548 (Les Vergers P. Tremblay et Fils) régénéré avec la vraie application et les vraies données QuickBooks, la facture F30466 (Bulletin Info-Marchés, 158,64 $) y figure et le total dû (3 838,88 $) égale le solde QuickBooks. Dix factures hors contribution impayées existent au 29 oct., dont deux chez des membres (F30466, F30477) ; les autres sont des commanditaires sans numéro de membre, exclus des relevés.
