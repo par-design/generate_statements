@@ -90,3 +90,16 @@ Copie du v3 sans le module POST, chaque facture écrite dans un data store Make 
 - module 8 : l'analyse du texte ne lit que le nombre avant « jours » (`split`), au cas où.
 
 Vérifié par une seconde simulation : TEST2026-10-32 → 126 jours déjà facturés, 0 nouveau jour. Appliqué au scénario de production 5008892 le 29 oct. 2026.
+
+## Garde-fou (ajouté le 29 oct. 2026)
+
+Le bogue des lignes mixtes a montré qu'un calcul absurde pouvait passer sans bruit. Le v3 vérifie maintenant des invariants avant d'écrire (module 17, puis routeur 18) :
+
+- jours déjà facturés ≤ jours de retard ;
+- jours déjà facturés ≥ 0 ;
+- au plus 31 nouveaux jours quand des frais ont déjà été facturés (le scénario passe deux fois par mois ; une première facturation peut légitimement couvrir plus) ;
+- frais ≤ solde de la facture.
+
+Toute facture qui viole une règle est **ignorée** (aucune écriture QuickBooks) et un courriel d'alerte part à ggaudreau@pardesign.net (module Gmail, connexion Google de Gabriel) avec le numéro de facture, le client et toutes les valeurs calculées. Les factures saines suivent la route normale (filtre « OK et frais > 0 », puis composition et POST).
+
+Testé le 29 oct. 2026 avec une copie restreinte au client PAR Design, sans module POST et avec une anomalie forcée sur TEST2026-10-32 : un seul courriel reçu, pour cette facture, les autres n'ont rien déclenché. Copie supprimée.
