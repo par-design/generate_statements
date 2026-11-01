@@ -419,13 +419,16 @@ PROVINCE_NAMES = {"QC": "Québec", "QUÉBEC": "Québec", "QUEBEC": "Québec", "O
 
 def format_locality(city, province, postal):
     """« Longueuil (Québec)  J4H 3Y9 », le format que l'APFFQ met sur ses enveloppes."""
-    city = (city or "").strip()
-    province = (province or "").strip()
+    city = (city or "").strip().strip(",").strip()
+    province = (province or "").strip().strip(",").strip()
     postal = (postal or "").strip().upper()
     m = CANADIAN_POSTAL_RE.fullmatch(postal.replace(" ", ""))
     if m:
         postal = f"{m.group(1)} {m.group(2)}"  # « J0L1H0 » saisi sans espace → « J0L 1H0 »
     province = PROVINCE_NAMES.get(province.upper(), province)
+    # Province absente de la fiche : au Québec, le code postal commence par G, H ou J.
+    if not province and city and postal[:1] in ("G", "H", "J"):
+        province = "Québec"
     # Sans ville, la province perd ses parenthèses — elles n'encadreraient plus rien.
     region = f"({province})" if (province and city) else province
     return " ".join(p for p in (city, region, postal) if p)
