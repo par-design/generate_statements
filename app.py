@@ -413,19 +413,87 @@ def split_single_line_address(address):
     return [", ".join(parts[:-1]), parts[-1]]
 
 
-def format_customer_address(data, raw_invoices):
-    """Compose l'adresse du destinataire sur deux lignes.
+CANADIAN_POSTAL_RE = re.compile(r"\b([A-Za-z]\d[A-Za-z])\s?(\d[A-Za-z]\d)\b")
+PROVINCE_NAMES = {"QC": "Québec", "QUÉBEC": "Québec", "QUEBEC": "Québec", "ON": "Ontario", "NB": "Nouveau-Brunswick"}
 
-    Make.com livre `customer_address` concaténé sur une seule ligne
-    (« 11 000, rang Sainte-Henriette Mirabel, Québec, J7J 1Z9 »), qui déborde de
-    la fenêtre de l'enveloppe dès que la rue est un peu longue. La fiche client
-    porte pourtant l'adresse structurée dans BillAddr : on la recompose au format
-    postal — rue d'abord, puis ville, province et code postal — ce qui tient
-    dans la largeur et laisse à l'adresse la place de s'allonger.
 
-    Sans BillAddr exploitable, on retombe sur `customer_address` tel quel s'il
-    est déjà sur plusieurs lignes, sinon on le coupe avant la province.
+def format_locality(city, province, postal):
+    """« Longueuil (Québec)  J4H 3Y9 », le format que l'APFFQ met sur ses enveloppes."""
+    city = (city or "").strip()
+    province = (province or "").strip()
+    postal = (postal or "").strip().upper()
+    m = CANADIAN_POSTAL_RE.fullmatch(postal.replace(" ", ""))
+    if m:
+        postal = f"{m.group(1)} {m.group(2)}"  # « J0L1H0 » saisi sans espace → « J0L 1H0 »
+    province = PROVINCE_NAMES.get(province.upper(), province)
+    # Sans ville, la province perd ses parenthèses — elles n'encadreraient plus rien.
+    region = f"({province})" if (province and city) else province
+    return " ".join(p for p in (city, region, postal) if p)
+
+
+def address_from_free_lines(lines, customer_name):
+    """Ramène un bloc « Facturer à » saisi en lignes libres (Line1 à Line5) au
+    format validé : rue, puis « Ville (Province) code postal ». Au plus deux
+    lignes avant la localité, pour que le bloc tienne dans la fenêtre de
+    l'enveloppe (un pouce : quatre lignes avec le nom du client, pas cinq).
     """
+    lines = [str(l or "").strip() for l in lines]
+    lines = [l for l in lines if l and l.casefold() != (customer_name or "").casefold()]
+    postal = ""
+    locality_idx = None
+    for idx, line in enumerate(lines):
+        m = CANADIAN_POSTAL_RE.search(line)
+        if m:
+            postal = f"{m.group(1)} {m.group(2)}".upper()
+            locality_idx = idx
+            break
+    if locality_idx is None:
+        return lines[:4]
+    locality_src = CANADIAN_POSTAL_RE.sub("", lines[locality_idx]).strip(" ,")
+    # Code postal seul sur sa ligne : la ville est sur la ligne précédente.
+    before = lines[:locality_idx]
+    if not locality_src and before:
+        locality_src = before.pop()
+    # Ligne réduite à la province (« Québec ») : la ville est sur la ligne d'avant.
+    if before and locality_src.upper() in ("QC", "QUÉBEC", "QUEBEC", "ON", "NB"):
+        locality_src = before.pop() + " " + locality_src
+    city, province = locality_src, ""
+    m = re.match(r"^(.*?)[\s,]+(QC|Québec|Quebec|ON|NB)$", locality_src, re.I)
+    if m:
+        city, province = m.group(1).strip(" ,"), m.group(2)
+    elif "(" in locality_src and locality_src.endswith(")"):
+        city, province = locality_src[: locality_src.rindex("(")].strip(" ,"), locality_src[locality_src.rindex("(") + 1 : -1]
+    street_lines = before
+    # Le nom d'une personne devant la rue est gardé seulement s'il reste de la place.
+    if len(street_lines) > 2:
+        street_lines = street_lines[-2:]
+    return street_lines + [format_locality(city, province or "Québec", postal)]
+
+
+def format_customer_address(data, raw_invoices):
+    """Compose l'adresse du destinataire : rue, puis « Ville (Québec) code postal ».
+
+    Source privilégiée : l'adresse structurée de la fiche client QuickBooks, que
+    Make.com transmet dans `customer_street`, `customer_city`,
+    `customer_province` et `customer_postal` (toutes les fiches avec solde en
+    ont une complète, vérifié le 1er novembre 2026). Trois lignes avec le nom
+    du client : c'est ce que Marie-Hélène a validé à l'impression le
+    14 septembre 2026, et la fenêtre de l'enveloppe (un pouce) n'en prend pas
+    cinq.
+
+    À défaut, le bloc « Facturer à » de la première facture : structuré
+    (Line1 + City/PostalCode) ou en lignes libres (Line1 à Line5, ville et code
+    postal en 4e et 5e ligne), ramené au même format et plafonné à quatre
+    lignes. En dernier recours, `customer_address` tel quel.
+    """
+    customer_name = str(data.get("customer_name", "") or "").strip()
+
+    street = str(data.get("customer_street", "") or "").strip()
+    locality = format_locality(data.get("customer_city"), data.get("customer_province"), data.get("customer_postal"))
+    if street and locality:
+        street2 = str(data.get("customer_street2", "") or "").strip()
+        return "\n".join(l for l in (street, street2, locality) if l)
+
     addr = {}
     for inv in raw_invoices:
         candidate = inv.get("BillAddr") or inv.get("ShipAddr")
@@ -434,25 +502,15 @@ def format_customer_address(data, raw_invoices):
             break
 
     if addr:
-        # QuickBooks stocke le bloc « Facturer à » d'une facture de deux façons :
-        # structuré (Line1 + City/CountrySubDivisionCode/PostalCode) ou en lignes
-        # libres (Line1 à Line5, la ville et le code postal en 4e et 5e ligne, sans
-        # champ City). Ne lire que Line1-3 faisait disparaître la ville et le code
-        # postal de 51 relevés sur 61 le 1er novembre 2026. On garde donc toutes
-        # les lignes, sans celle qui répète le nom du client déjà imprimé au-dessus.
-        customer_name = str(data.get("customer_name", "") or "").strip().casefold()
-        lines = [str(addr.get(k, "") or "").strip() for k in ("Line1", "Line2", "Line3", "Line4", "Line5")]
-        lines = [s for s in lines if s and s.casefold() != customer_name]
         city = str(addr.get("City", "") or "").strip()
-        province = str(addr.get("CountrySubDivisionCode", "") or "").strip()
         postal = str(addr.get("PostalCode", "") or "").strip()
-        # Format postal québécois, celui que l'APFFQ utilise déjà sur ses
-        # enveloppes : « Longueuil (Québec)  J4H 3Y9 ». Sans ville, la province
-        # perd ses parenthèses — elles n'encadreraient plus rien.
-        region = f"({province})" if (province and city) else province
-        locality = " ".join(p for p in (city, region, postal) if p)
-        if locality and locality.casefold() not in (l.casefold() for l in lines):
-            lines.append(locality)
+        raw_lines = [addr.get(k, "") for k in ("Line1", "Line2", "Line3", "Line4", "Line5")]
+        if city and postal:
+            lines = [str(l or "").strip() for l in raw_lines]
+            lines = [l for l in lines if l and l.casefold() != customer_name.casefold()][-2:]
+            lines.append(format_locality(city, addr.get("CountrySubDivisionCode"), postal))
+        else:
+            lines = address_from_free_lines(raw_lines, customer_name)
         if lines:
             return "\n".join(lines)
 
