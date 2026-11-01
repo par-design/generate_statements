@@ -434,8 +434,15 @@ def format_customer_address(data, raw_invoices):
             break
 
     if addr:
-        lines = [str(addr.get(k, "") or "").strip() for k in ("Line1", "Line2", "Line3")]
-        lines = [s for s in lines if s]
+        # QuickBooks stocke le bloc « Facturer à » d'une facture de deux façons :
+        # structuré (Line1 + City/CountrySubDivisionCode/PostalCode) ou en lignes
+        # libres (Line1 à Line5, la ville et le code postal en 4e et 5e ligne, sans
+        # champ City). Ne lire que Line1-3 faisait disparaître la ville et le code
+        # postal de 51 relevés sur 61 le 1er novembre 2026. On garde donc toutes
+        # les lignes, sans celle qui répète le nom du client déjà imprimé au-dessus.
+        customer_name = str(data.get("customer_name", "") or "").strip().casefold()
+        lines = [str(addr.get(k, "") or "").strip() for k in ("Line1", "Line2", "Line3", "Line4", "Line5")]
+        lines = [s for s in lines if s and s.casefold() != customer_name]
         city = str(addr.get("City", "") or "").strip()
         province = str(addr.get("CountrySubDivisionCode", "") or "").strip()
         postal = str(addr.get("PostalCode", "") or "").strip()
@@ -444,7 +451,7 @@ def format_customer_address(data, raw_invoices):
         # perd ses parenthèses — elles n'encadreraient plus rien.
         region = f"({province})" if (province and city) else province
         locality = " ".join(p for p in (city, region, postal) if p)
-        if locality:
+        if locality and locality.casefold() not in (l.casefold() for l in lines):
             lines.append(locality)
         if lines:
             return "\n".join(lines)
