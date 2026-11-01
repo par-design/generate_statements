@@ -107,3 +107,10 @@ Testé le 29 oct. 2026 avec une copie restreinte au client PAR Design, sans modu
 ## Vérification du 29 oct. 2026 : factures hors contribution sur les relevés
 
 Le scénario « QB - États de compte » n'a aucun filtre sur le type de facture (`Balance > '0'` seulement) et `app.py` non plus ; le scénario n'a pas été modifié entre le 1er et le 29 octobre (hors l'article 17), donc les relevés du 1er et du 15 octobre incluaient déjà ces factures. Preuve de bout en bout : relevé du client 548 (Les Vergers P. Tremblay et Fils) régénéré avec la vraie application et les vraies données QuickBooks, la facture F30466 (Bulletin Info-Marchés, 158,64 $) y figure et le total dû (3 838,88 $) égale le solde QuickBooks. Dix factures hors contribution impayées existent au 29 oct., dont deux chez des membres (F30466, F30477) ; les autres sont des commanditaires sans numéro de membre, exclus des relevés.
+
+## Adresse du destinataire (correctif du 1er novembre 2026)
+
+Depuis le 14 septembre, `format_customer_address()` compose l'adresse depuis le `BillAddr` de la première facture. QuickBooks y stocke souvent le bloc « Facturer à » en lignes libres (`Line1` à `Line5`, ville et code postal en 4e et 5e ligne, sans `City`) : ne lire que `Line1`-`Line3` faisait disparaître la ville et le code postal. Le 1er novembre 2026, 51 relevés sur 61 étaient touchés (et vraisemblablement ceux du 1er et du 15 octobre). Corrigé par la PR 3 : toutes les lignes sont gardées, sans celle qui répète le nom du client, et la localité structurée n'est ajoutée que si elle manque. Les 61 relevés du 1er novembre ont été régénérés dans le Drive le jour même (scénario Make temporaire : recherche du fichier par nom dans le dossier du jour, suppression, puis téléversement).
+
+Vérification rapide avant chaque envoi postal : ouvrir deux ou trois PDF de membres dont la facture QuickBooks porte un bloc « Facturer à » en plusieurs lignes et s'assurer que le code postal est présent.
+
